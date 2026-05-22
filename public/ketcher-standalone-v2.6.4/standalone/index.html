@@ -1,0 +1,93 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="Ketcher is a web-based chemical structure editor"/><link rel="shortcut icon" type="image/x-icon" href="./favicon.ico"/><link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png"/><link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png"/><link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png"/><link rel="manifest" href="./manifest.json"/><title>Ketcher v2.6.3</title><script defer="defer" src="./static/js/main.998da0b9.js"></script><link href="./static/css/main.8e693d51.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div><script>
+// 添加 postMessage 支持，用于与父窗口通信
+(function() {
+	function waitForKetcher() {
+		// 尝试多种方式获取 ketcher 实例
+		let ketcher = null;
+		
+		// 方法1: 从 window 对象获取
+		if (window.ketcher) {
+			ketcher = window.ketcher;
+		}
+		// 方法2: 从 React 组件获取
+		else if (window.React && document.getElementById('root')) {
+			const root = document.getElementById('root');
+			if (root && (root as any)._reactInternalInstance) {
+				// 尝试从 React 实例获取
+			}
+		}
+		// 方法3: 监听全局事件
+		else {
+			// 等待 ketcher 初始化
+			const checkInterval = setInterval(() => {
+				if (window.ketcher) {
+					ketcher = window.ketcher;
+					clearInterval(checkInterval);
+					setupMessageListener(ketcher);
+				}
+			}, 500);
+			
+			// 10秒后停止检查
+			setTimeout(() => {
+				clearInterval(checkInterval);
+			}, 10000);
+			return;
+		}
+		
+		if (ketcher) {
+			setupMessageListener(ketcher);
+		} else {
+			// 继续等待
+			setTimeout(waitForKetcher, 500);
+		}
+	}
+	
+	function setupMessageListener(ketcher: any) {
+		window.addEventListener('message', function(event) {
+			// 只处理来自父窗口的消息
+			if (event.data && event.data.type === 'getSmiles') {
+				try {
+					// 尝试获取 SMILES
+					if (ketcher && typeof ketcher.getSmiles === 'function') {
+						ketcher.getSmiles().then(function(smiles: string) {
+							window.parent.postMessage({
+								type: 'smiles',
+								smiles: smiles
+							}, '*');
+						}).catch(function(err: any) {
+							console.error('获取 SMILES 失败:', err);
+							// 尝试其他方法
+							try {
+								// 尝试从编辑器获取
+								if (ketcher.editor && ketcher.editor.struct) {
+									const molfile = ketcher.getMolfile();
+									// 如果无法获取 SMILES，至少返回 molfile
+									window.parent.postMessage({
+										type: 'smiles',
+										smiles: '',
+										molfile: molfile
+									}, '*');
+								}
+							} catch (e) {
+								console.error('备用方法也失败:', e);
+							}
+						});
+					} else {
+						// 如果 ketcher 没有 getSmiles 方法，尝试其他方式
+						console.warn('Ketcher 实例没有 getSmiles 方法');
+					}
+				} catch (err) {
+					console.error('处理 getSmiles 请求时出错:', err);
+				}
+			}
+		});
+	}
+	
+	// 页面加载完成后开始等待
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', waitForKetcher);
+	} else {
+		waitForKetcher();
+	}
+})();
+</script></body></html>

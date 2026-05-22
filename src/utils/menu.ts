@@ -1,0 +1,66 @@
+import XEUtils from "xe-utils"
+
+/**
+ * @description: 处理后端菜单数据格式
+ * @param {Array} menuData
+ * @return {*}
+ */
+export const handleMenu = (menuData: Array<any>) => {
+    // 先处理menu meta数据转换
+    const handleMeta = (item: any) => {
+        item.meta = {
+            title: item.title,
+            isLink: item.link_url,
+            isHide: !item.visible,
+            isKeepAlive: item.cache,
+            isAffix: item.is_affix,
+            isIframe: item.is_iframe,
+            roles: ['admin'],
+            icon: item.icon
+        }
+        item.name = item.component_name
+        item.path = item.web_path
+        return item
+    }
+
+    // 处理框架外的路由
+    const handleFrame = (item: any) => {
+        if (item.is_iframe) {
+            item.meta = {
+                title: item.title,
+                isLink: item.link_url,
+                isHide: !item.visible,
+                isKeepAlive: item.cache,
+                isAffix: item.is_affix,
+                isIframe: item.is_iframe,
+                roles: ['admin'],
+                icon: item.icon
+            }
+            item.name = item.component_name
+            item.path = item.web_path
+        }
+        return item
+    }
+
+    // 框架内路由
+    const defaultRoutes:Array<any> = []
+    // 框架外路由
+    const iframeRoutes:Array<any> = []
+
+    menuData.forEach((val) => {
+        // if (val.is_iframe) {
+        //     // iframeRoutes.push(handleFrame(val))
+        // } else {
+        //     defaultRoutes.push(handleMeta(val))
+        // }
+        defaultRoutes.push(handleMeta(val))
+    })
+    const data = XEUtils.toArrayTree(defaultRoutes, {
+        parentKey: 'parent',
+        strict: true,
+    })
+
+    // 不再强行插入化学逆合成、公告等菜单，让它们完全由菜单管理配置
+    const dynamicRoutesData = [...data]
+    return {frameIn:dynamicRoutesData,frameOut:iframeRoutes}
+}
