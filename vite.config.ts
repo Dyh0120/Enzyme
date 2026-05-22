@@ -93,7 +93,7 @@ export default defineConfig((configEnv: ConfigEnv) => {
 			hmr: true,
 			proxy: {
 				'/api': {
-					target: env.VITE_API_URL || 'http://210.47.18.59:8000',
+					target: env.VITE_API_URL || 'http://10.10.0.18:8000/',
 					changeOrigin: true,
 				},
 			},
