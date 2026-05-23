@@ -1,125 +1,138 @@
 <template>
-	<div class="retro-page" :style="{ '--retro-accent': methodInfo.accent }">
+	<div class="retro-page">
 		<el-card class="retro-hero" shadow="never">
 			<div class="retro-hero__content">
 				<div>
-					<p class="retro-hero__eyebrow">{{ methodInfo.eyebrow }}</p>
-					<h1 class="retro-hero__title">{{ parentMeta.title }} · {{ methodInfo.title }}</h1>
+					<p class="retro-hero__eyebrow">Enzyme Optimization · AI Powered</p>
+					<h1 class="retro-hero__title">酶优化计算工作台</h1>
 					<p class="retro-hero__description">
-						{{ methodInfo.description }}
+						基于序列信息、PDB 结构文件和底物 SMILES，通过 AI 模型进行酶活性位点优化计算。
 					</p>
 					<el-tag class="retro-hero__tag" effect="dark">
-						{{ methodInfo.heroHint }}
+						AI 驱动的酶工程优化
 					</el-tag>
 				</div>
 				<el-button type="primary" size="large" plain @click="handleOpenCanvas">
 					<el-icon>
 						<ele-MagicStick />
 					</el-icon>
-					绘制画板
+					绘制底物
 				</el-button>
 			</div>
 		</el-card>
 
-		<el-row :gutter="20" class="retro-cards-row">
+		<el-row :gutter="16" class="retro-cards-row">
 			<!-- 左侧：主表单区域 -->
-			<el-col :xs="24" :lg="16" class="retro-card-col">
+			<el-col :xs="24" :lg="18" class="retro-card-col">
 				<el-card class="retro-form-card" shadow="hover">
 					<template #header>
 						<div class="card-header">
-							<span class="card-title">分子结构输入</span>
+							<span class="card-title">酶优化参数输入</span>
 						</div>
 					</template>
 					
 					<el-form :model="form" class="retro-form">
-						<el-form-item>
+						<el-form-item label="序列信息">
 							<template #label>
 								<span class="form-label">
 									<el-icon><ele-Edit /></el-icon>
-									SMILES 字符串
+									序列信息
+								</span>
+							</template>
+							<el-input
+								v-model="form.sequence"
+								type="textarea"
+								:rows="5"
+								placeholder="请输入酶的氨基酸序列（FASTA格式或纯字母序列）"
+								clearable
+								:resize="'none'"
+								class="sequence-input"
+							/>
+							<div class="form-tip">
+								<el-icon><ele-Info /></el-icon>
+								<span>酶的氨基酸序列，结构建模和功能预测的基础</span>
+							</div>
+						</el-form-item>
+						
+						<el-form-item label="PDB 文件">
+							<template #label>
+								<span class="form-label">
+									<el-icon><ele-Upload /></el-icon>
+									PDB 文件
+								</span>
+							</template>
+							<el-upload
+								ref="pdbUpload"
+								:limit="1"
+								:show-file-list="true"
+								:on-change="handlePdbChange"
+								:on-remove="handlePdbRemove"
+								:before-upload="beforePdbUpload"
+								:auto-upload="false"
+								accept=".pdb"
+							>
+								<el-button type="primary">选择 PDB 文件</el-button>
+								<template #tip>
+									<div class="form-tip">
+										<el-icon><ele-Info /></el-icon>
+										<span>提供酶的三维原子坐标结构文件</span>
+									</div>
+								</template>
+							</el-upload>
+							<el-progress v-if="uploadingPdb" :percentage="uploadProgress" style="margin-top: 10px;" />
+						</el-form-item>
+						
+						<el-form-item label="位点信息">
+							<template #label>
+								<span class="form-label">
+									<el-icon><ele-Position /></el-icon>
+									位点信息
+								</span>
+							</template>
+							<el-input
+								v-model="pocketSitesInput"
+								placeholder="请输入要优化的位点，多个位点用逗号分隔，例如：154, 197, 300, 407"
+								clearable
+							/>
+							<div class="form-tip">
+								<el-icon><ele-Info /></el-icon>
+								<span>指定希望优化或变异的氨基酸位点位置</span>
+							</div>
+						</el-form-item>
+						
+						<el-form-item label="底物信息">
+							<template #label>
+								<span class="form-label">
+									<el-icon><ele-Molecule /></el-icon>
+									底物信息 (SMILES)
 								</span>
 							</template>
 							<el-input
 								v-model="form.smiles"
 								type="textarea"
 								:rows="3"
-								placeholder="请输入或粘贴 SMILES 字符串，例如：CCO (乙醇) 或 CC(=O)O (乙酸)"
+								placeholder="请输入底物的 SMILES 字符串，或点击上方按钮绘制底物结构"
 								clearable
 								:resize="'none'"
 								class="smiles-input"
 							/>
-							<template #error>
-								<div class="form-tip">
-									<el-icon><ele-Info /></el-icon>
-									<span>支持标准 SMILES 格式，可包含原子映射标记（如 [C:1]）</span>
-								</div>
-							</template>
+							<div class="form-tip">
+								<el-icon><ele-Info /></el-icon>
+								<span>底物分子结构的 SMILES 表示</span>
+							</div>
 						</el-form-item>
 						
-						<!-- 输入统计信息 -->
-						<div class="input-stats">
-							<div class="stat-item">
-								<el-icon class="stat-icon"><ele-Document /></el-icon>
-								<span class="stat-label">字符数：</span>
-								<span class="stat-value">{{ form.smiles.length }}</span>
-							</div>
-							<div class="stat-item">
-								<el-icon class="stat-icon"><ele-Check /></el-icon>
-								<span class="stat-label">状态：</span>
-								<span class="stat-value" :class="{ 'stat-success': form.smiles.length > 0, 'stat-empty': form.smiles.length === 0 }">
-									{{ form.smiles.length > 0 ? '已输入' : '待输入' }}
-								</span>
-							</div>
-						</div>
-						
-						<!-- 两个参数输入 -->
-						<div class="parameter-config">
-  <div class="config-header">
-    <el-icon><ele-Setting /></el-icon>
-    <span>预测参数设置</span>
-  </div>
-  <div class="config-content">
-    <div class="config-item">
-      <span class="config-label">最大迭代次数:</span>
-      <el-input-number 
-        v-model="form.iterations" 
-        :min="1" 
-        :max="2000" 
-        size="small"
-        controls-position="right"
-      />
-    </div>
-    <div class="config-item">
-      <span class="config-label">Top-K 扩展数:</span>
-      <el-input-number 
-        v-model="form.expansion_topk" 
-        :min="1" 
-        :max="100" 
-        size="small"
-        controls-position="right"
-      />
-    </div>
-  </div>
-</div>
-						
-						<div class="quick-examples">
-							<span class="quick-examples-label">快速示例：</span>
-							<el-button size="small" @click="loadExample('[CH3:1][C:2](=[O:3])[c:4]1[cH:5][cH:6][c:7]2[c:8]([cH:9][cH:10][n:11]2[C:12](=[O:13])[O:14][C:15]([CH3:16])([CH3:17])[CH3:18])[cH:19]1')">
-								加载示例
-							</el-button>
-						</div>
-						
 						<div class="retro-form__actions">
-							<el-button type="success" size="large" :loading="loading" @click="handlePredict">
+							<el-button type="success" size="large" :loading="loading" @click="handleSubmit">
 								<template #icon>
 									<el-icon>
 										<ele-Guide />
 									</el-icon>
 								</template>
-								{{ loading ? '正在预测…' : '开始预测' }}
+								{{ loading ? '正在提交…' : '提交任务' }}
 							</el-button>
 							<span v-if="loading" class="retro-form__hint">
-								正在生成预测结果，预测完成后会提示您
+								正在提交任务，请稍候...
 							</span>
 						</div>
 					</el-form>
@@ -127,66 +140,101 @@
 			</el-col>
 			
 			<!-- 右侧：帮助信息区域 -->
-			<el-col :xs="24" :lg="8" class="retro-card-col">
-				<!-- 使用提示 -->
-				<el-card class="info-card tips-card" shadow="hover">
-					<template #header>
-						<div class="info-card-header">
-							<el-icon><ele-Lightbulb /></el-icon>
-							<span>使用提示</span>
-						</div>
-					</template>
-					<div class="tips-content">
-						<el-alert
-							type="info"
-							:closable="false"
-							show-icon
-							class="tip-alert"
-						>
-							<template #title>
-								<div class="tip-item">
-									<strong>方式一：</strong>直接在输入框中输入或粘贴 SMILES 字符串
+			<el-col :xs="24" :lg="6" class="retro-card-col">
+				<el-row :gutter="12" style="height: 100%;">
+					<!-- 使用说明 -->
+					<el-col :span="24" class="retro-card-col">
+						<el-card class="info-card tips-card" shadow="hover">
+							<template #header>
+								<div class="info-card-header">
+									<el-icon><ele-Lightbulb /></el-icon>
+									<span>使用说明</span>
 								</div>
 							</template>
-						</el-alert>
-						<el-alert
-							type="success"
-							:closable="false"
-							show-icon
-							class="tip-alert"
-						>
-							<template #title>
-								<div class="tip-item">
-									<strong>方式二：</strong>点击"绘制画板"按钮，使用可视化编辑器绘制分子结构
+							<div class="tips-content">
+								<el-alert
+									type="info"
+									:closable="false"
+									show-icon
+									class="tip-alert"
+								>
+									<template #title>
+										<div class="tip-item">
+											<strong>序列信息：</strong>输入酶的氨基酸序列，FASTA 格式或纯字母序列均可
+										</div>
+									</template>
+								</el-alert>
+								<el-alert
+									type="success"
+									:closable="false"
+									show-icon
+									class="tip-alert"
+								>
+									<template #title>
+										<div class="tip-item">
+											<strong>PDB 文件：</strong>上传酶的三维结构文件，用于精修结构和能量计算
+										</div>
+									</template>
+								</el-alert>
+								<el-alert
+									type="warning"
+									:closable="false"
+									show-icon
+									class="tip-alert"
+								>
+									<template #title>
+										<div class="tip-item">
+											<strong>位点信息：</strong>指定需要优化的氨基酸位置，多个位点用逗号分隔
+										</div>
+									</template>
+								</el-alert>
+								<el-alert
+									type="info"
+									:closable="false"
+									show-icon
+									class="tip-alert"
+								>
+									<template #title>
+										<div class="tip-item">
+											<strong>底物信息：</strong>输入底物的 SMILES，或点击绘制按钮使用可视化编辑器
+										</div>
+									</template>
+								</el-alert>
+							</div>
+						</el-card>
+					</el-col>
+					
+					<!-- 快速参考 -->
+					<el-col :span="24" class="retro-card-col">
+						<el-card class="info-card quick-ref-card" shadow="hover">
+							<template #header>
+								<div class="info-card-header">
+									<el-icon><ele-Document /></el-icon>
+									<span>快速参考</span>
 								</div>
 							</template>
-						</el-alert>
-						<el-alert
-							type="warning"
-							:closable="false"
-							show-icon
-							class="tip-alert"
-						>
-							<template #title>
-								<div class="tip-item">
-									<strong>方式三：</strong>点击快速示例按钮，快速加载示例分子的SMILES字符串
+							<div class="quick-ref-content">
+								<div class="ref-item">
+									<el-tag size="small" type="primary">SMILES</el-tag>
+									<span>简化分子线性输入规范</span>
 								</div>
-							</template>
-						</el-alert>
-						<el-alert
-							type="info"
-							:closable="false"
-							show-icon
-							class="tip-alert"
-						>
-							<template #title>
-								<div class="tip-item">
-									<strong>提示：</strong>支持标准 SMILES 格式，可包含原子映射标记
+								<div class="ref-item">
+									<el-tag size="small" type="success">PDB</el-tag>
+									<span>蛋白质数据库格式</span>
 								</div>
-							</template>
-						</el-alert>
-					</div>
-				</el-card>
+								<div class="ref-item">
+									<el-tag size="small" type="warning">FASTA</el-tag>
+									<span>生物序列格式</span>
+								</div>
+								<div class="ref-divider"></div>
+								<div class="ref-note">
+									<el-icon><ele-InfoFilled /></el-icon>
+									<span>提交后任务将在后台运行，完成后可在任务列表查看结果</span>
+								</div>
+							</div>
+						</el-card>
+					</el-col>
+				</el-row>
 			</el-col>
 		</el-row>
 
@@ -236,54 +284,30 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { onBeforeUnmount, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { chemistryMethodMetas, chemistryParentMeta, getChemistryMetaByKey } from '/@/router/chemistry';
 import axios from 'axios'; 
 
-const route = useRoute();
 const loading = ref(false);
-const timer = ref<ReturnType<typeof setTimeout> | null>(null);
+const uploadingPdb = ref(false);
+const uploadProgress = ref(0);
 const ketcherDialogVisible = ref(false);
 const ketcherIframe = ref<HTMLIFrameElement | null>(null);
 const tempSmiles = ref('');
 const gettingSmiles = ref(false);
 const ketcherReady = ref(false);
+const pdbUpload = ref<any>(null);
+const pdbFile = ref<File | null>(null);
+const pdbUuid = ref<string>('');
+const pocketSitesInput = ref<string>('');
 
 const form = reactive({
+  sequence: '',
   smiles: '',
-  iterations: 500,      // 默认值
-  expansion_topk: 50     // 默认值
 });
-
-// 加载示例
-const loadExample = (smiles: string) => {
-	form.smiles = smiles;
-	ElMessage({
-		type: 'success',
-		message: '已加载示例',
-		duration: 2000,
-	});
-};
 
 // Ketcher 画板 URL
 const ketcherUrl = '/ketcher-standalone-v2.6.4/standalone/index.html';
-
-const parentMeta = chemistryParentMeta;
-
-const methodInfo = computed(() => {
-	const key = route.meta?.methodKey as string;
-	return getChemistryMetaByKey(key) || chemistryMethodMetas[0];
-});
-
-const resetLoading = () => {
-	if (timer.value) {
-		clearTimeout(timer.value);
-		timer.value = null;
-	}
-	loading.value = false;
-};
 
 const handleOpenCanvas = () => {
 	ketcherDialogVisible.value = true;
@@ -291,20 +315,16 @@ const handleOpenCanvas = () => {
 };
 
 const handleKetcherLoad = () => {
-	// iframe 加载完成后，注入 postMessage 监听器
 	ketcherReady.value = true;
 	if (ketcherIframe.value?.contentWindow) {
 		try {
-			// 尝试注入脚本到 iframe 中
 			const iframeDoc = ketcherIframe.value.contentDocument || ketcherIframe.value.contentWindow?.document;
 			if (iframeDoc) {
-				// 等待 Ketcher 加载完成
 				setTimeout(() => {
 					injectKetcherMessageHandler();
 				}, 2000);
 			}
 		} catch (error) {
-			// 跨域限制，无法直接访问
 			console.log('无法访问 iframe 内容，可能需要通过 postMessage');
 		}
 	}
@@ -321,7 +341,6 @@ const injectKetcherMessageHandler = () => {
 };
 
 const handleKetcherClose = () => {
-	// 弹窗关闭时清理事件监听器
 	if (messageHandler) {
 		window.removeEventListener('message', messageHandler);
 		messageHandler = null;
@@ -334,21 +353,16 @@ let messageHandler: ((event: MessageEvent) => void) | null = null;
 const handleGetSmiles = async () => {
 	gettingSmiles.value = true;
 	
-	// 尝试通过 postMessage 获取
 	if (ketcherIframe.value?.contentWindow && ketcherReady.value) {
 		try {
-			// 清理之前的事件监听器
 			if (messageHandler) {
 				window.removeEventListener('message', messageHandler);
 			}
 			
-			// 设置超时
 			let timeoutId: ReturnType<typeof setTimeout> | null = null;
 			let resolved = false;
 			
-			// 监听来自 ketcher 的消息
 			messageHandler = (event: MessageEvent) => {
-				// 检查消息来源
 				if (event.data && event.data.type === 'smiles') {
 					resolved = true;
 					if (timeoutId) clearTimeout(timeoutId);
@@ -367,16 +381,13 @@ const handleGetSmiles = async () => {
 			};
 			window.addEventListener('message', messageHandler);
 			
-			// 发送获取 SMILES 的请求
 			ketcherIframe.value.contentWindow.postMessage(
 				{ type: 'getSmiles' },
 				'*'
 			);
 			
-			// 设置超时
 			timeoutId = setTimeout(() => {
 				if (!resolved) {
-					// 尝试直接访问 iframe 内部的 ketcher 实例
 					try {
 						const iframeWindow = ketcherIframe.value?.contentWindow as any;
 						if (iframeWindow && iframeWindow.ketcher) {
@@ -389,7 +400,6 @@ const handleGetSmiles = async () => {
 								});
 								gettingSmiles.value = false;
 							}).catch(() => {
-								// 提示用户手动复制
 								ElMessage({
 									type: 'info',
 									message: '无法自动获取，请在画板中点击"Copy"按钮复制 SMILES，然后粘贴到下方输入框',
@@ -451,52 +461,127 @@ const handleConfirmSmiles = () => {
 	}
 };
 
-const handlePredict = async () => {
-    if (!form.smiles.trim()) {
-        ElMessage.warning('请输入 SMILES 字符串后再进行预测');
-        return;
-    }
-
-    if (loading.value) return;
-    
-    resetLoading();
-    loading.value = true;
-
-    try {
-        const postData = {
-            // 将 id 转为 integer，smiles 去空格，包含新增的两个参数
-            id: parseInt(localStorage.getItem('userId') || '100'),
-            smiles: form.smiles.trim(),
-            iterations: form.iterations,
-            expansion_topk: form.expansion_topk
-        };
-
-        const response = await axios.post('/api/system/task/add/', postData);
-
-        if (response.status === 200) {
-            ElMessage.success('任务已成功创建并加入后台检测队列');
-						form.smiles="";
-        } else {
-            throw new Error('接口响应异常');
-        }
-    } catch (error: any) {
-        console.error('提交失败:', error);
-        ElMessage.error(error.response?.data?.message || '提交失败，请稍后重试');
-    } finally {
-        loading.value = false;
-    }
+const handlePdbChange = (file: any) => {
+	pdbFile.value = file.raw;
 };
 
-watch(
-	() => route.fullPath,
-	() => {
-		resetLoading();
+const handlePdbRemove = () => {
+	pdbFile.value = null;
+	pdbUuid.value = '';
+};
+
+const beforePdbUpload = (file: File) => {
+	return true;
+};
+
+const uploadPdbFile = async (): Promise<string> => {
+	if (!pdbFile.value) {
+		throw new Error('请选择 PDB 文件');
 	}
-);
+
+	uploadingPdb.value = true;
+	uploadProgress.value = 0;
+
+	const formData = new FormData();
+	formData.append('file', pdbFile.value);
+
+	try {
+		const response = await axios.post('/api/system/enzyme/pdb/upload/', formData, {
+			onUploadProgress: (progressEvent) => {
+				if (progressEvent.total) {
+					uploadProgress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+				}
+			}
+		});
+
+		if (response.data.code === 200) {
+			ElMessage.success('PDB 文件上传成功');
+			return response.data.data.uuid;
+		} else {
+			throw new Error(response.data.msg || '上传失败');
+		}
+	} catch (error: any) {
+		console.error('PDB 上传失败:', error);
+		throw new Error(error.response?.data?.msg || 'PDB 文件上传失败，请稍后重试');
+	} finally {
+		uploadingPdb.value = false;
+		uploadProgress.value = 0;
+	}
+};
+
+const parsePocketSites = (): number[] => {
+	if (!pocketSitesInput.value.trim()) {
+		return [];
+	}
+	return pocketSitesInput.value
+		.split(',')
+		.map(s => s.trim())
+		.filter(s => s)
+		.map(s => parseInt(s, 10))
+		.filter(n => !isNaN(n));
+};
+
+const handleSubmit = async () => {
+	if (!form.sequence.trim()) {
+		ElMessage.warning('请输入序列信息');
+		return;
+	}
+
+	if (!pdbFile.value) {
+		ElMessage.warning('请上传 PDB 文件');
+		return;
+	}
+
+	const pocketSites = parsePocketSites();
+	if (pocketSites.length === 0) {
+		ElMessage.warning('请输入位点信息');
+		return;
+	}
+
+	if (!form.smiles.trim()) {
+		ElMessage.warning('请输入底物信息 (SMILES)');
+		return;
+	}
+
+	if (loading.value) return;
+
+	loading.value = true;
+
+	try {
+		const uuid = await uploadPdbFile();
+		pdbUuid.value = uuid;
+
+		const postData = {
+			sequence: form.sequence.trim(),
+			smiles: form.smiles.trim(),
+			pdb_uuid: pdbUuid.value,
+			pocket_sites: pocketSites
+		};
+
+		const response = await axios.post('/api/system/enzyme/task/create/', postData);
+
+		if (response.data.code === 200) {
+			ElMessage.success('任务已提交');
+			form.sequence = '';
+			form.smiles = '';
+			pocketSitesInput.value = '';
+			if (pdbUpload.value) {
+				pdbUpload.value.clearFiles();
+			}
+			pdbFile.value = null;
+			pdbUuid.value = '';
+		} else {
+			throw new Error(response.data.msg || '提交失败');
+		}
+	} catch (error: any) {
+		console.error('提交失败:', error);
+		ElMessage.error(error.message || '提交失败，请稍后重试');
+	} finally {
+		loading.value = false;
+	}
+};
 
 onBeforeUnmount(() => {
-	if (timer.value) clearTimeout(timer.value);
-	// 清理消息监听器
 	if (messageHandler) {
 		window.removeEventListener('message', messageHandler);
 		messageHandler = null;
@@ -508,11 +593,10 @@ onBeforeUnmount(() => {
 .retro-page {
 	display: flex;
 	flex-direction: column;
-	gap: 20px;
-	padding: 18px;
+	gap: 12px;
+	padding: 12px;
 	background: linear-gradient(135deg, rgba(76, 125, 255, 0.08), rgba(255, 255, 255, 0.9));
 	min-height: calc(100vh - 120px);
-	--retro-accent: var(--el-color-primary);
 
 	.retro-hero {
 		border: none;
@@ -520,41 +604,51 @@ onBeforeUnmount(() => {
 	}
 }
 
+.sequence-input,
+.smiles-input {
+	:deep(.el-textarea__inner) {
+		font-family: 'Courier New', monospace;
+		font-size: 13px;
+		line-height: 1.5;
+		resize: none !important;
+	}
+}
+
 .retro-hero__content {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: 24px;
+	gap: 20px;
 }
 
 .retro-hero__eyebrow {
-	font-size: 13px;
+	font-size: 12px;
 	font-weight: 600;
-	color: var(--retro-accent);
+	color: #4c7dff;
 	text-transform: uppercase;
 	letter-spacing: 0.08em;
-	margin-bottom: 8px;
+	margin-bottom: 4px;
 }
 
 .retro-hero__title {
-	font-size: 26px;
+	font-size: 22px;
 	margin: 0;
 	color: var(--el-text-color-primary);
 }
 
 .retro-hero__description {
-	margin: 10px 0 18px;
+	margin: 6px 0 12px;
 	color: var(--el-text-color-secondary);
-	font-size: 14px;
-	line-height: 1.6;
+	font-size: 13px;
+	line-height: 1.5;
 	max-width: 560px;
 }
 
 .retro-hero__tag {
 	border: none;
-	background: var(--retro-accent);
+	background: #4c7dff;
 	color: #fff;
-	font-size: 13px;
+	font-size: 12px;
 }
 
 .retro-form-card {
@@ -562,19 +656,10 @@ onBeforeUnmount(() => {
 	
 	.card-header {
 		.card-title {
-			font-size: 20px;
+			font-size: 16px;
 			font-weight: 600;
 			color: var(--el-text-color-primary);
 		}
-	}
-}
-
-.smiles-input {
-	:deep(.el-textarea__inner) {
-		font-family: 'Courier New', monospace;
-		font-size: 14px;
-		line-height: 1.6;
-		resize: none !important;
 	}
 }
 
@@ -583,130 +668,26 @@ onBeforeUnmount(() => {
 	align-items: center;
 	gap: 6px;
 	font-weight: 500;
+	font-size: 14px;
 }
 
 .form-tip {
 	display: flex;
 	align-items: center;
 	gap: 4px;
-	font-size: 12px;
+	font-size: 11px;
 	color: var(--el-text-color-secondary);
-	margin-top: 4px;
+	margin-top: 2px;
 	
 	.el-icon {
-		font-size: 14px;
+		font-size: 12px;
 		color: var(--el-color-info);
 	}
 }
 
-.input-stats {
-	display: flex;
-	align-items: center;
-	gap: 16px;
-	padding: 6px 12px;
-	background: var(--el-bg-color-page);
-	border-radius: 6px;
-	margin-bottom: 10px;
-	
-	.stat-item {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		font-size: 13px;
-		
-		.stat-icon {
-			font-size: 14px;
-			color: var(--el-color-primary);
-		}
-		
-		.stat-label {
-			color: var(--el-text-color-regular);
-		}
-		
-		.stat-value {
-			font-weight: 600;
-			color: var(--el-text-color-primary);
-			
-			&.stat-success {
-				color: var(--el-color-success);
-			}
-			
-			&.stat-empty {
-				color: var(--el-text-color-placeholder);
-			}
-		}
-	}
-}
-
-.parameter-config {
-  background: linear-gradient(135deg, rgba(76, 125, 255, 0.05), rgba(255, 255, 255, 0.8));
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 10px;
-  
-  .config-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--el-text-color-primary);
-    margin-bottom: 10px;
-    
-    .el-icon {
-      font-size: 14px;
-      color: var(--el-color-primary);
-    }
-  }
-  
-  .config-content {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    align-items: center;
-  }
-  
-  .config-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    
-    .config-label {
-      font-size: 13px;
-      color: var(--el-text-color-regular);
-      white-space: nowrap;
-    }
-
-    :deep(.el-input-number--small) {
-      width: 100px;
-    }
-  }
-}
-
-
-.quick-examples {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	margin-bottom: 10px;
-	padding: 6px 12px;
-	background: var(--el-bg-color-page);
-	border-radius: 6px;
-	flex-wrap: wrap;
-	
-	.quick-examples-label {
-		font-size: 13px;
-		color: var(--el-text-color-regular);
-		white-space: nowrap;
-		font-weight: 500;
-	}
-}
-
-
 .retro-form__hint {
 	color: var(--el-text-color-secondary);
-	font-size: 14px;
+	font-size: 13px;
 }
 
 .retro-cards-row {
@@ -732,7 +713,7 @@ onBeforeUnmount(() => {
 	justify-content: space-between;
 	
 	:deep(.el-form-item) {
-		margin-bottom: 12px;
+		margin-bottom: 8px;
 		
 		&:last-child {
 			margin-bottom: 0;
@@ -740,8 +721,8 @@ onBeforeUnmount(() => {
 	}
 	
 	.retro-form__actions {
-		margin-top: 10px;
-		padding-top: 10px;
+		margin-top: 8px;
+		padding-top: 8px;
 		border-top: 1px solid var(--el-border-color-lighter);
 	}
 }
@@ -754,7 +735,7 @@ onBeforeUnmount(() => {
 	
 	:deep(.el-card__header) {
 		flex-shrink: 0;
-		padding: 10px 20px;
+		padding: 8px 16px;
 	}
 	
 	:deep(.el-card__body) {
@@ -762,7 +743,7 @@ onBeforeUnmount(() => {
 		display: flex;
 		flex-direction: column;
 		min-height: 0;
-		padding: 10px 20px;
+		padding: 8px 16px;
 	}
 }
 
@@ -777,7 +758,7 @@ onBeforeUnmount(() => {
 	
 	:deep(.el-dialog__header) {
 		flex-shrink: 0 !important;
-		padding: 20px 20px 10px !important;
+		padding: 16px 16px 8px !important;
 		border-bottom: 1px solid var(--el-border-color-lighter);
 	}
 	
@@ -794,7 +775,7 @@ onBeforeUnmount(() => {
 	
 	:deep(.el-dialog__footer) {
 		flex-shrink: 0 !important;
-		padding: 15px 20px !important;
+		padding: 12px 16px !important;
 		border-top: 1px solid var(--el-border-color-lighter);
 	}
 }
@@ -816,36 +797,34 @@ onBeforeUnmount(() => {
 .ketcher-dialog-footer {
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	gap: 10px;
 	padding: 0 !important;
 }
 
 .ketcher-smiles-input {
 	width: 100%;
-	margin-bottom: 8px;
+	margin-bottom: 4px;
 }
 
 .ketcher-dialog-buttons {
 	display: flex;
 	justify-content: flex-end;
-	gap: 12px;
+	gap: 10px;
 	width: 100%;
 }
 
-// 右侧信息卡片样式
 .info-card {
 	border: none;
-	margin-bottom: 20px;
+	margin-bottom: 0;
 	
 	.info-card-header {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: 6px;
 		font-weight: 600;
-		font-size: 20px;
+		font-size: 16px;
 		color: var(--el-text-color-primary);
 	}
-	
 }
 
 .tips-content {
@@ -853,24 +832,55 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
-	gap: 4px;
+	gap: 3px;
 	
 	.tip-alert {
 		margin-bottom: 0 !important;
 		
 		:deep(.el-alert__content) {
-			padding: 6px 0;
+			padding: 4px 0;
 		}
 	}
 	
 	.tip-item {
-		font-size: 13px;
+		font-size: 12px;
 		line-height: 1.4;
 	}
 }
 
-.retro-form-card {
-	min-height: 300px;
+.quick-ref-content {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	
+	.ref-item {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 12px;
+		color: var(--el-text-color-regular);
+	}
+	
+	.ref-divider {
+		height: 1px;
+		background: var(--el-border-color-lighter);
+		margin: 4px 0;
+	}
+	
+	.ref-note {
+		display: flex;
+		align-items: flex-start;
+		gap: 6px;
+		font-size: 11px;
+		color: var(--el-text-color-secondary);
+		line-height: 1.5;
+		
+		.el-icon {
+			color: var(--el-color-info);
+			flex-shrink: 0;
+			margin-top: 1px;
+		}
+	}
 }
 
 @media (max-width: 768px) {
@@ -882,15 +892,6 @@ onBeforeUnmount(() => {
 	.retro-form__actions {
 		flex-direction: column;
 		align-items: flex-start;
-	}
-	
-	.quick-examples {
-		flex-direction: column;
-		align-items: flex-start;
-		
-		.quick-examples-label {
-			margin-bottom: 8px;
-		}
 	}
 }
 </style>

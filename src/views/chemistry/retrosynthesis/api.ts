@@ -47,3 +47,34 @@ export function getTaskLogs(data: { uid: string }) {
 		data,
 	});
 }
+
+export function getEnzymeTaskList(query: any) {
+	return request({
+		url: '/api/system/enzyme/task/list/',
+		method: 'get',
+		params: query,
+	});
+}
+
+export function getEnzymeTaskDetail(taskUuid: string) {
+	return request({
+		url: `/api/system/enzyme/task/${taskUuid}/`,
+		method: 'get',
+	});
+}
+
+export function cancelEnzymeTask(data: { uuid: string }) {
+	return request({
+		url: '/api/system/enzyme/task/cancel/',
+		method: 'get',
+		params: data,
+	});
+}
+
+export function deleteEnzymeTask(data: { uuid: string }) {
+	return request({
+		url: '/api/system/enzyme/task/delete/',
+		method: 'post',
+		data,
+	});
+}
