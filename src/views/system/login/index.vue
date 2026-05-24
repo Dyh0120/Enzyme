@@ -28,112 +28,116 @@
 		</div>
 
 		<div class="login-left">
-			<!-- 分子结构装饰 -->
-			<div class="molecule-decoration molecule-1">
-				<svg viewBox="0 0 100 100" class="molecule-svg">
-					<circle cx="50" cy="50" r="8" fill="currentColor" opacity="0.8"/>
-					<circle cx="20" cy="30" r="5" fill="currentColor" opacity="0.6"/>
-					<circle cx="80" cy="30" r="5" fill="currentColor" opacity="0.6"/>
-					<circle cx="20" cy="70" r="5" fill="currentColor" opacity="0.6"/>
-					<circle cx="80" cy="70" r="5" fill="currentColor" opacity="0.6"/>
-					<line x1="50" y1="50" x2="20" y2="30" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
-					<line x1="50" y1="50" x2="80" y2="30" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
-					<line x1="50" y1="50" x2="20" y2="70" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
-					<line x1="50" y1="50" x2="80" y2="70" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+			<!-- 蛋白质结构装饰 -->
+			<div class="protein-decoration protein-helix">
+				<svg viewBox="0 0 200 400" class="protein-svg">
+					<path d="M50 20 Q80 60 50 100 Q20 140 50 180 Q80 220 50 260 Q20 300 50 340 Q80 380 50 400" 
+						  fill="none" stroke="currentColor" stroke-width="3" opacity="0.3"/>
+					<path d="M150 20 Q120 60 150 100 Q180 140 150 180 Q120 220 150 260 Q180 300 150 340 Q120 380 150 400" 
+						  fill="none" stroke="currentColor" stroke-width="3" opacity="0.3"/>
+					<line x1="50" y1="60" x2="150" y2="60" stroke="currentColor" stroke-width="2" opacity="0.2"/>
+					<line x1="50" y1="140" x2="150" y2="140" stroke="currentColor" stroke-width="2" opacity="0.2"/>
+					<line x1="50" y1="220" x2="150" y2="220" stroke="currentColor" stroke-width="2" opacity="0.2"/>
+					<line x1="50" y1="300" x2="150" y2="300" stroke="currentColor" stroke-width="2" opacity="0.2"/>
+					<circle cx="50" cy="60" r="6" fill="currentColor" opacity="0.5"/>
+					<circle cx="150" cy="60" r="6" fill="currentColor" opacity="0.5"/>
+					<circle cx="50" cy="140" r="6" fill="currentColor" opacity="0.5"/>
+					<circle cx="150" cy="140" r="6" fill="currentColor" opacity="0.5"/>
+					<circle cx="50" cy="220" r="6" fill="currentColor" opacity="0.5"/>
+					<circle cx="150" cy="220" r="6" fill="currentColor" opacity="0.5"/>
+					<circle cx="50" cy="300" r="6" fill="currentColor" opacity="0.5"/>
+					<circle cx="150" cy="300" r="6" fill="currentColor" opacity="0.5"/>
 				</svg>
 			</div>
 			
-			<div class="molecule-decoration molecule-2">
-				<svg viewBox="0 0 100 100" class="molecule-svg">
-					<circle cx="30" cy="50" r="6" fill="currentColor" opacity="0.7"/>
-					<circle cx="70" cy="50" r="6" fill="currentColor" opacity="0.7"/>
-					<circle cx="50" cy="20" r="4" fill="currentColor" opacity="0.5"/>
-					<circle cx="50" cy="80" r="4" fill="currentColor" opacity="0.5"/>
-					<line x1="30" y1="50" x2="70" y2="50" stroke="currentColor" stroke-width="2" opacity="0.4"/>
-					<line x1="30" y1="50" x2="50" y2="20" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
-					<line x1="30" y1="50" x2="50" y2="80" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
-					<line x1="70" y1="50" x2="50" y2="20" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
-					<line x1="70" y1="50" x2="50" y2="80" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+			<div class="enzyme-decoration enzyme-1">
+				<svg viewBox="0 0 100 100" class="enzyme-svg">
+					<ellipse cx="50" cy="50" rx="40" ry="25" fill="none" stroke="currentColor" stroke-width="2" opacity="0.4"/>
+					<circle cx="50" cy="50" r="15" fill="currentColor" opacity="0.2"/>
+					<circle cx="35" cy="45" r="4" fill="currentColor" opacity="0.6"/>
+					<circle cx="65" cy="55" r="4" fill="currentColor" opacity="0.6"/>
+					<circle cx="50" cy="65" r="3" fill="currentColor" opacity="0.5"/>
 				</svg>
 			</div>
 
-			<div class="molecule-decoration molecule-3">
-				<svg viewBox="0 0 100 100" class="molecule-svg hexagon">
-					<polygon points="50,10 90,30 90,70 50,90 10,70 10,30" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
-					<circle cx="50" cy="50" r="5" fill="currentColor" opacity="0.6"/>
-					<circle cx="50" cy="10" r="3" fill="currentColor" opacity="0.4"/>
-					<circle cx="90" cy="30" r="3" fill="currentColor" opacity="0.4"/>
-					<circle cx="90" cy="70" r="3" fill="currentColor" opacity="0.4"/>
-					<circle cx="50" cy="90" r="3" fill="currentColor" opacity="0.4"/>
-					<circle cx="10" cy="70" r="3" fill="currentColor" opacity="0.4"/>
-					<circle cx="10" cy="30" r="3" fill="currentColor" opacity="0.4"/>
+			<div class="enzyme-decoration enzyme-2">
+				<svg viewBox="0 0 100 100" class="enzyme-svg active-site">
+					<path d="M20 50 Q35 30 50 50 Q65 70 80 50" fill="none" stroke="currentColor" stroke-width="2.5" opacity="0.5"/>
+					<circle cx="50" cy="50" r="8" fill="currentColor" opacity="0.3"/>
+					<circle cx="35" cy="40" r="5" fill="currentColor" opacity="0.4"/>
+					<circle cx="65" cy="60" r="5" fill="currentColor" opacity="0.4"/>
+					<line x1="50" y1="50" x2="35" y2="40" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+					<line x1="50" y1="50" x2="65" y2="60" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
 				</svg>
 			</div>
 			
 			<div class="login-left-logo">
 				<div class="logo-icon-wrapper">
 					<div class="logo-icon">
-						<!-- 烧瓶SVG图标替代emoji -->
-						<svg viewBox="0 0 120 140" class="flask-icon">
+						<!-- 酶结构SVG图标 -->
+						<svg viewBox="0 0 200 200" class="enzyme-icon">
 							<defs>
-								<linearGradient id="flaskGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-									<stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
-									<stop offset="100%" style="stop-color:#1e40af;stop-opacity:1" />
+								<linearGradient id="enzymeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+									<stop offset="0%" style="stop-color:#1e40af;stop-opacity:1" />
+									<stop offset="100%" style="stop-color:#1e3a8a;stop-opacity:1" />
 								</linearGradient>
-								<linearGradient id="liquidGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-									<stop offset="0%" style="stop-color:#60a5fa;stop-opacity:0.8" />
-									<stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.9" />
-								</linearGradient>
+								<radialGradient id="activeSiteGradient" cx="50%" cy="50%" r="50%">
+									<stop offset="0%" style="stop-color:#1e3a8a;stop-opacity:0.9" />
+									<stop offset="100%" style="stop-color:#1e40af;stop-opacity:0.7" />
+								</radialGradient>
 							</defs>
-							<!-- 烧瓶颈部 -->
-							<path d="M45 5 L45 50 L20 110 Q15 125 30 130 L90 130 Q105 125 100 110 L75 50 L75 5 Z" 
-								  fill="none" stroke="url(#flaskGradient)" stroke-width="3" opacity="0.9"/>
-							<!-- 烧瓶口 -->
-							<ellipse cx="60" cy="5" rx="15" ry="4" fill="none" stroke="url(#flaskGradient)" stroke-width="3"/>
-							<!-- 液体 -->
-							<path d="M25 115 Q22 122 30 125 L90 125 Q98 122 95 115 L85 85 L35 85 Z" 
-								  fill="url(#liquidGradient)"/>
-							<!-- 气泡 -->
-							<circle cx="45" cy="100" r="3" fill="white" opacity="0.6">
-								<animate attributeName="cy" values="100;75;100" dur="3s" repeatCount="indefinite"/>
-								<animate attributeName="opacity" values="0.6;0;0.6" dur="3s" repeatCount="indefinite"/>
+							<!-- 酶主体轮廓 -->
+							<ellipse cx="100" cy="100" rx="75" ry="50" fill="none" stroke="url(#enzymeGradient)" stroke-width="4" opacity="0.95"/>
+							<!-- 活性位点 -->
+							<circle cx="100" cy="100" r="25" fill="url(#activeSiteGradient)" opacity="0.85"/>
+							<!-- 结合位点标记 -->
+							<circle cx="70" cy="85" r="8" fill="#1e40af" opacity="0.8">
+								<animate attributeName="r" values="8;10;8" dur="2s" repeatCount="indefinite"/>
+								<animate attributeName="opacity" values="0.8;1;0.8" dur="2s" repeatCount="indefinite"/>
 							</circle>
-							<circle cx="60" cy="95" r="2.5" fill="white" opacity="0.5">
-								<animate attributeName="cy" values="95;70;95" dur="2.5s" repeatCount="indefinite"/>
-								<animate attributeName="opacity" values="0.5;0;0.5" dur="2.5s" repeatCount="indefinite"/>
+							<circle cx="130" cy="115" r="8" fill="#1e3a8a" opacity="0.8">
+								<animate attributeName="r" values="8;10;8" dur="2.5s" repeatCount="indefinite"/>
+								<animate attributeName="opacity" values="0.8;1;0.8" dur="2.5s" repeatCount="indefinite"/>
 							</circle>
-							<circle cx="75" cy="105" r="2" fill="white" opacity="0.4">
-								<animate attributeName="cy" values="105;80;105" dur="3.5s" repeatCount="indefinite"/>
-								<animate attributeName="opacity" values="0.4;0;0.4" dur="3.5s" repeatCount="indefinite"/>
+							<circle cx="100" cy="125" r="6" fill="#1e40af" opacity="0.7">
+								<animate attributeName="r" values="6;8;6" dur="3s" repeatCount="indefinite"/>
+								<animate attributeName="opacity" values="0.7;0.9;0.7" dur="3s" repeatCount="indefinite"/>
 							</circle>
+							<!-- 连接线 -->
+							<line x1="100" y1="100" x2="70" y2="85" stroke="#1e40af" stroke-width="2.5" opacity="0.6"/>
+							<line x1="100" y1="100" x2="130" y2="115" stroke="#1e3a8a" stroke-width="2.5" opacity="0.6"/>
+							<line x1="100" y1="100" x2="100" y2="125" stroke="#1e40af" stroke-width="2.5" opacity="0.6"/>
+							<!-- 表面纹理 -->
+							<path d="M40 80 Q60 70 80 80" fill="none" stroke="url(#enzymeGradient)" stroke-width="2.5" opacity="0.5"/>
+							<path d="M120 120 Q140 130 160 120" fill="none" stroke="url(#enzymeGradient)" stroke-width="2.5" opacity="0.5"/>
 						</svg>
 					</div>
 				</div>
 				<div class="login-left-logo-text">
 					<h1 class="brand-title">
-						<span class="title-chinese">化学逆合成管理系统</span>
+						<span class="title-chinese">酶优化计算平台</span>
 					</h1>
 					<p class="brand-subtitle">
-						Chemical Retrosynthesis Management System
+						Enzyme Optimization Computing Platform
 					</p>
 					<div class="feature-tags">
 						<span class="feature-tag">
 							<svg class="tag-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-							</svg>
-							AI驱动
-						</span>
-						<span class="feature-tag">
-							<svg class="tag-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 								<path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
 							</svg>
-							智能分析
+							AI预测
 						</span>
 						<span class="feature-tag">
 							<svg class="tag-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<path d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+								<path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
 							</svg>
-							逆合成
+							酶工程
+						</span>
+						<span class="feature-tag">
+							<svg class="tag-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+							</svg>
+							高效优化
 						</span>
 					</div>
 				</div>
@@ -288,7 +292,7 @@ onUnmounted(() => {
 		&.orb-1 {
 			width: 600px;
 			height: 600px;
-			background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%);
+			background: radial-gradient(circle, rgba(59, 130, 246, 0.25) 0%, transparent 70%);
 			top: -200px;
 			right: -100px;
 			animation-delay: 0s;
@@ -297,7 +301,7 @@ onUnmounted(() => {
 		&.orb-2 {
 			width: 500px;
 			height: 500px;
-			background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, transparent 70%);
+			background: radial-gradient(circle, rgba(30, 64, 175, 0.2) 0%, transparent 70%);
 			bottom: -150px;
 			left: -100px;
 			animation-delay: -7s;
@@ -306,7 +310,7 @@ onUnmounted(() => {
 		&.orb-3 {
 			width: 400px;
 			height: 400px;
-			background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
+			background: radial-gradient(circle, rgba(37, 99, 235, 0.15) 0%, transparent 70%);
 			top: 40%;
 			left: 30%;
 			animation-delay: -14s;
@@ -344,10 +348,10 @@ onUnmounted(() => {
 		position: absolute;
 		width: 3px;
 		height: 3px;
-		background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+		background: linear-gradient(135deg, #1e40af, #3b82f6);
 		border-radius: 50%;
 		pointer-events: none;
-		box-shadow: 0 0 6px rgba(59, 130, 246, 0.5);
+		box-shadow: 0 0 6px rgba(30, 64, 175, 0.4);
 	}
 
 	.login-left {
@@ -372,44 +376,57 @@ onUnmounted(() => {
 			display: none;
 		}
 
-		// 分子结构装饰
-		.molecule-decoration {
+		// 蛋白质螺旋结构装饰
+		.protein-decoration {
 			position: absolute;
-			color: rgba(59, 130, 246, 0.15);
+			color: rgba(30, 58, 138, 0.15);
 			pointer-events: none;
 			z-index: 1;
 
-			.molecule-svg {
+			.protein-svg {
 				width: 100%;
 				height: 100%;
 			}
 
-			&.molecule-1 {
-				width: 180px;
-				height: 180px;
-				top: 10%;
-				left: 5%;
-				animation: rotate-slow 30s linear infinite;
+			&.protein-helix {
+				width: 200px;
+				height: 400px;
+				top: 5%;
+				left: 3%;
+				animation: float-slow 25s ease-in-out infinite;
+			}
+		}
+
+		// 酶活性位点装饰
+		.enzyme-decoration {
+			position: absolute;
+			color: rgba(30, 64, 175, 0.18);
+			pointer-events: none;
+			z-index: 1;
+
+			.enzyme-svg {
+				width: 100%;
+				height: 100%;
 			}
 
-			&.molecule-2 {
-				width: 150px;
-				height: 150px;
-				bottom: 20%;
-				right: 10%;
-				animation: rotate-slow 25s linear infinite reverse;
+			&.enzyme-1 {
+				width: 160px;
+				height: 160px;
+				bottom: 15%;
+				right: 8%;
+				animation: rotate-slow 35s linear infinite;
 			}
 
-			&.molecule-3 {
-				width: 120px;
-				height: 120px;
-				top: 60%;
-				left: 8%;
-				animation: pulse-gentle 4s ease-in-out infinite;
-			}
+			&.enzyme-2 {
+				width: 140px;
+				height: 140px;
+				top: 55%;
+				left: 6%;
+				animation: pulse-gentle 5s ease-in-out infinite;
 
-			.hexagon {
-				animation: rotate-slow 40s linear infinite;
+				.active-site {
+					animation: rotate-slow 30s linear infinite reverse;
+				}
 			}
 		}
 
@@ -433,7 +450,7 @@ onUnmounted(() => {
 					content: '';
 					position: absolute;
 					inset: -20px;
-					background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+					background: radial-gradient(circle, rgba(30, 64, 175, 0.12) 0%, transparent 70%);
 					border-radius: 50%;
 					animation: pulse-glow 3s ease-in-out infinite;
 				}
@@ -446,14 +463,14 @@ onUnmounted(() => {
 				position: relative;
 				animation: float-gentle 4s ease-in-out infinite;
 
-				.flask-icon {
-					width: 140px;
-					height: 160px;
-					filter: drop-shadow(0 10px 30px rgba(59, 130, 246, 0.3));
+				.enzyme-icon {
+					width: 180px;
+					height: 180px;
+					filter: drop-shadow(0 10px 30px rgba(30, 64, 175, 0.35));
 					transition: transform 0.3s ease;
 
 					&:hover {
-						transform: scale(1.05);
+						transform: scale(1.05) rotate(5deg);
 					}
 				}
 			}
@@ -701,6 +718,15 @@ onUnmounted(() => {
 }
 
 // 动画定义
+@keyframes float-slow {
+	0%, 100% {
+		transform: translateY(0px) rotate(0deg);
+	}
+	50% {
+		transform: translateY(-20px) rotate(5deg);
+	}
+}
+
 @keyframes fadeIn {
 	from {
 		opacity: 0;

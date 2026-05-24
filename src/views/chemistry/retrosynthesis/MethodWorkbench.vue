@@ -43,15 +43,11 @@
 								v-model="form.sequence"
 								type="textarea"
 								:rows="5"
-								placeholder="请输入酶的氨基酸序列（FASTA格式或纯字母序列）"
+								placeholder="请输入酶的氨基酸序列"
 								clearable
 								:resize="'none'"
 								class="sequence-input"
 							/>
-							<div class="form-tip">
-								<el-icon><ele-Info /></el-icon>
-								<span>酶的氨基酸序列，结构建模和功能预测的基础</span>
-							</div>
 						</el-form-item>
 						
 						<el-form-item label="PDB 文件">
@@ -73,10 +69,6 @@
 							>
 								<el-button type="primary">选择 PDB 文件</el-button>
 								<template #tip>
-									<div class="form-tip">
-										<el-icon><ele-Info /></el-icon>
-										<span>提供酶的三维原子坐标结构文件</span>
-									</div>
 								</template>
 							</el-upload>
 							<el-progress v-if="uploadingPdb" :percentage="uploadProgress" style="margin-top: 10px;" />
@@ -94,17 +86,13 @@
 								placeholder="请输入要优化的位点，多个位点用逗号分隔，例如：154, 197, 300, 407"
 								clearable
 							/>
-							<div class="form-tip">
-								<el-icon><ele-Info /></el-icon>
-								<span>指定希望优化或变异的氨基酸位点位置</span>
-							</div>
 						</el-form-item>
 						
 						<el-form-item label="底物信息">
 							<template #label>
 								<span class="form-label">
-									<el-icon><ele-Molecule /></el-icon>
-									底物信息 (SMILES)
+									<el-icon><ele-Connection /></el-icon>
+									底物信息
 								</span>
 							</template>
 							<el-input
@@ -116,10 +104,6 @@
 								:resize="'none'"
 								class="smiles-input"
 							/>
-							<div class="form-tip">
-								<el-icon><ele-Info /></el-icon>
-								<span>底物分子结构的 SMILES 表示</span>
-							</div>
 						</el-form-item>
 						
 						<div class="retro-form__actions">
@@ -130,6 +114,14 @@
 									</el-icon>
 								</template>
 								{{ loading ? '正在提交…' : '提交任务' }}
+							</el-button>
+							<el-button type="primary" size="large" plain @click="handleLoadExample">
+								<template #icon>
+									<el-icon>
+										<ele-Document />
+									</el-icon>
+								</template>
+								加载示例
 							</el-button>
 							<span v-if="loading" class="retro-form__hint">
 								正在提交任务，请稍候...
@@ -225,11 +217,6 @@
 								<div class="ref-item">
 									<el-tag size="small" type="warning">FASTA</el-tag>
 									<span>生物序列格式</span>
-								</div>
-								<div class="ref-divider"></div>
-								<div class="ref-note">
-									<el-icon><ele-InfoFilled /></el-icon>
-									<span>提交后任务将在后台运行，完成后可在任务列表查看结果</span>
 								</div>
 							</div>
 						</el-card>
@@ -581,6 +568,13 @@ const handleSubmit = async () => {
 	}
 };
 
+const handleLoadExample = () => {
+	form.sequence = 'MGYARRVMDGIGEVAVTGAGGSVTGARLRHQVRLLAHALTEAGIPPGRGVACLHANTWRAIALRLAVQAIGCHYVGLRPTAAVTEQARAIAAADSAALVFEPSVEARAADLLERVSVPVVLSLGPTSRGRDILAASVPEGTPLRYREHPEGIAVVAFTSGTTGTPKGVAHSSTAMSACVDAAVSMYGRGPWRFLIPIPLSDLGGELAQCTLATGGTVVLLEEFQPDAVLEAIERERATHVFLAPNWLYQLAEHPALPRSDLSSLRRVVYGGAPAVPSRVAAARERMGAVLMQNYGTQEAAFIAALTPDDHARRELLTAVGRPLPHVEVEIRDDSGGTLPRGAVGEVWVRSPMTMSGYWRDPERTAQVLSGGWLRTGDVGTFDEDGHLHLTDRLQDIIIVEAYNVYSRRVEHVLTEHPDVRAAAVVGVPDPDSGEAVCAAVVVADGADPDPEHLRALVRDHLGDLHVPRRVEFVRSIPVTPAGKPDKVKVRTWFTD';
+	form.smiles = 'NCCC1=CC(O)=C(O)C=C1';
+	pocketSitesInput.value = '154, 197, 300, 407';
+	ElMessage.success('示例数据已加载');
+};
+
 onBeforeUnmount(() => {
 	if (messageHandler) {
 		window.removeEventListener('message', messageHandler);
@@ -713,7 +707,7 @@ onBeforeUnmount(() => {
 	justify-content: space-between;
 	
 	:deep(.el-form-item) {
-		margin-bottom: 8px;
+		margin-bottom: 2px;
 		
 		&:last-child {
 			margin-bottom: 0;
@@ -721,8 +715,8 @@ onBeforeUnmount(() => {
 	}
 	
 	.retro-form__actions {
-		margin-top: 8px;
-		padding-top: 8px;
+		margin-top: 2px;
+		padding-top: 2px;
 		border-top: 1px solid var(--el-border-color-lighter);
 	}
 }

@@ -1,29 +1,29 @@
 <template>
   <div class="results-page">
-    <el-card shadow="none" class="results-table-card">
-      <div class="filter-bar">
-        <el-select v-model="statusFilter" placeholder="任务状态" clearable style="width: 150px;" @change="fetchData">
-          <el-option label="全部" :value="null" />
-          <el-option label="处理中" :value="0" />
-          <el-option label="已完成" :value="1" />
-          <el-option label="已删除" :value="2" />
-          <el-option label="失败" :value="3" />
-        </el-select>
-      </div>
-      
-      <el-table :data="taskList" border stripe v-loading="loading" table-layout="fixed">
-        <el-table-column label="任务UUID" width="280">
-          <template #default="{ row }">
-            <el-tooltip :content="row.uuid" placement="top">
-              <span class="uuid-text">{{ row.uuid }}</span>
-            </el-tooltip>
+    <div class="filter-bar">
+      <el-select v-model="statusFilter" placeholder="任务状态" clearable style="width: 150px;" @change="fetchData">
+        <el-option label="全部" :value="null" />
+        <el-option label="处理中" :value="0" />
+        <el-option label="已完成" :value="1" />
+        <el-option label="已删除" :value="2" />
+        <el-option label="失败" :value="3" />
+      </el-select>
+    </div>
+    
+    <el-table :data="taskList" border stripe v-loading="loading" table-layout="fixed">
+        <el-table-column label="编号" width="80" align="center">
+          <template #default="{ $index }">
+            <span class="serial-number">{{ (currentPage - 1) * pageSize + $index + 1 }}</span>
           </template>
         </el-table-column>
 
         <el-table-column label="序列信息" min-width="200">
           <template #default="{ row }">
-            <el-tooltip :content="row.sequence" placement="top">
-              <span class="sequence-text">{{ row.sequence.substring(0, 50) }}{{ row.sequence.length > 50 ? '...' : '' }}</span>
+            <el-tooltip placement="top" popper-class="multiline-tooltip">
+              <template #content>
+                <div style="white-space: pre-wrap; word-break: break-all; max-width: 600px;">{{ row.sequence }}</div>
+              </template>
+              <span class="sequence-text copyable-text" @click="copyToClipboard(row.sequence, '序列')" style="display: block; width: 100%; height: 100%; padding: 8px 0;">{{ row.sequence.substring(0, 50) }}{{ row.sequence.length > 50 ? '...' : '' }}</span>
             </el-tooltip>
           </template>
         </el-table-column>
@@ -36,8 +36,11 @@
 
         <el-table-column label="底物SMILES" min-width="180">
           <template #default="{ row }">
-            <el-tooltip :content="row.smiles" placement="top">
-              <span class="smiles-text">{{ row.smiles }}</span>
+            <el-tooltip placement="top" popper-class="multiline-tooltip">
+              <template #content>
+                <div style="white-space: pre-wrap; word-break: break-all; max-width: 600px;">{{ row.smiles }}</div>
+              </template>
+              <span class="smiles-text copyable-text" @click="copyToClipboard(row.smiles, 'SMILES')" style="display: block; width: 100%; height: 100%; padding: 8px 0;">{{ row.smiles }}</span>
             </el-tooltip>
           </template>
         </el-table-column>
@@ -48,22 +51,27 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" width="140">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" size="small">
-              <el-icon v-if="row.status === 0" class="is-loading"><ele-Loading /></el-icon>
-              {{ row.status_label }}
-            </el-tag>
+            <div>
+              <el-tag :type="getStatusType(row.status)" size="small">
+                <el-icon v-if="row.status === 0" class="is-loading"><ele-Loading /></el-icon>
+                {{ row.status_label }}
+              </el-tag>
+              <div v-if="row.started_at && row.finished_at" class="duration-text">
+                耗时: {{ calculateDuration(row.started_at, row.finished_at) }}
+              </div>
+            </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="阶段" width="160">
+        <el-table-column label="阶段" width="90">
           <template #default="{ row }">
             <span class="stage-text">{{ row.stage_label || '-' }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column label="结果数量" width="100">
+        <el-table-column label="结果数量" width="70">
           <template #default="{ row }">
             <span class="result-count">{{ row.result_count || 0 }}</span>
           </template>
@@ -71,7 +79,7 @@
 
         <el-table-column label="创建时间" width="170" prop="create_datetime" />
 
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <div class="action-buttons">
               <el-button type="primary" link @click="handleViewDetail(row)">查看详情</el-button>
@@ -92,108 +100,31 @@
             </div>
           </template>
         </el-table-column>
-      </el-table>
-      
-      <div class="results-pagination">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          @size-change="handleSizeChange"
-          @current-change="handlePageChange"
-        />
-      </div>
-    </el-card>
-
-    <el-dialog v-model="detailModalVisible" title="任务详情" width="1200px" destroy-on-close align-center class="detail-custom-dialog">
-      <div v-loading="detailLoading" class="detail-content">
-        <el-empty v-if="!currentTask" description="加载中..." />
-        <template v-else>
-          <el-descriptions :column="2" border class="task-info">
-            <el-descriptions-item label="任务UUID">{{ currentTask.uuid }}</el-descriptions-item>
-            <el-descriptions-item label="状态">
-              <el-tag :type="getStatusType(currentTask.status)">{{ currentTask.status_label }}</el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="阶段">{{ currentTask.stage_label || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="结果数量">{{ currentTask.result_count || 0 }}</el-descriptions-item>
-            <el-descriptions-item label="PDB文件">{{ currentTask.pdb_file_name || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="创建时间">{{ currentTask.create_datetime }}</el-descriptions-item>
-            <el-descriptions-item label="开始时间">{{ currentTask.started_at || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="完成时间">{{ currentTask.finished_at || '-' }}</el-descriptions-item>
-          </el-descriptions>
-          
-          <el-divider content-position="left">序列信息</el-divider>
-          <el-input
-            v-model="currentTask.sequence"
-            type="textarea"
-            :rows="4"
-            readonly
-            class="detail-textarea"
-          />
-          
-          <el-divider content-position="left">底物SMILES</el-divider>
-          <el-input
-            v-model="currentTask.smiles"
-            type="textarea"
-            :rows="2"
-            readonly
-            class="detail-textarea"
-          />
-          
-          <el-divider content-position="left">位点信息</el-divider>
-          <el-tag v-for="site in currentTask.pocket_sites" :key="site" style="margin-right: 8px; margin-bottom: 8px;">
-            {{ site }}
-          </el-tag>
-          
-          <el-divider v-if="currentTask.error_message" content-position="left">错误信息</el-divider>
-          <el-alert v-if="currentTask.error_message" :title="currentTask.error_message" type="error" show-icon />
-          
-          <el-divider v-if="currentResults.length > 0" content-position="left">优化结果</el-divider>
-          <el-table v-if="currentResults.length > 0" :data="currentResults" border stripe max-height="400">
-            <el-table-column label="Enzyme ID" prop="Enzyme_id" width="180" />
-            <el-table-column label="类型" prop="type" width="100" />
-            <el-table-column label="序列" prop="sequence" min-width="200">
-              <template #default="{ row }">
-                <el-tooltip :content="row.sequence" placement="top">
-                  <span class="sequence-text">{{ row.sequence }}</span>
-                </el-tooltip>
-              </template>
-            </el-table-column>
-            <el-table-column label="SMILES" prop="smiles" min-width="180">
-              <template #default="{ row }">
-                <el-tooltip :content="row.smiles" placement="top">
-                  <span class="smiles-text">{{ row.smiles }}</span>
-                </el-tooltip>
-              </template>
-            </el-table-column>
-            <el-table-column label="pred_kcat" prop="pred_kcat(s^-1)" width="120">
-              <template #default="{ row }">
-                {{ row['pred_kcat(s^-1)']?.toFixed(4) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="pred_opt_temp" prop="pred_opt_temp" width="130">
-              <template #default="{ row }">
-                {{ row.pred_opt_temp?.toFixed(2) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="expression_score" prop="expression_score" width="150">
-              <template #default="{ row }">
-                {{ row.expression_score?.toFixed(4) }}
-              </template>
-            </el-table-column>
-          </el-table>
-        </template>
-      </div>
-    </el-dialog>
+    </el-table>
+    
+    <div class="results-pagination">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[10, 20, 50, 100]"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="total"
+        @size-change="handleSizeChange"
+        @current-change="handlePageChange"
+      />
+    </div>
   </div>
+
+
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { getEnzymeTaskList, getEnzymeTaskDetail, cancelEnzymeTask, deleteEnzymeTask } from './api';
+import { getEnzymeTaskList, cancelEnzymeTask, deleteEnzymeTask } from './api';
+
+const router = useRouter();
 
 const taskList = ref<any[]>([]);
 const total = ref(0);
@@ -202,11 +133,6 @@ const currentPage = ref(1);
 const loading = ref(false);
 const statusFilter = ref<number | null>(null);
 const buttonLoading = ref<Record<string, boolean>>({});
-
-const detailModalVisible = ref(false);
-const detailLoading = ref(false);
-const currentTask = ref<any>(null);
-const currentResults = ref<any[]>([]);
 
 let pollingTimer: any = null;
 
@@ -218,6 +144,28 @@ const getStatusType = (status: number) => {
     3: 'danger'
   };
   return typeMap[status] || 'info';
+};
+
+const calculateDuration = (startTime: string, endTime: string): string => {
+  if (!startTime || !endTime) return '-';
+  
+  const start = new Date(startTime).getTime();
+  const end = new Date(endTime).getTime();
+  const duration = end - start;
+  
+  if (duration < 0) return '-';
+  
+  const seconds = Math.floor(duration / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  
+  if (hours > 0) {
+    return `${hours}小时${minutes % 60}分钟${seconds % 60}秒`;
+  } else if (minutes > 0) {
+    return `${minutes}分钟${seconds % 60}秒`;
+  } else {
+    return `${seconds}秒`;
+  }
 };
 
 const fetchData = async (isPolling = false) => {
@@ -268,25 +216,11 @@ const stopPolling = () => {
   }
 };
 
-const handleViewDetail = async (row: any) => {
-  detailModalVisible.value = true;
-  detailLoading.value = true;
-  currentTask.value = null;
-  currentResults.value = [];
-
-  try {
-    const res = await getEnzymeTaskDetail(row.uuid);
-    if (res.code === 200) {
-      currentTask.value = res.data.task;
-      currentResults.value = res.data.results || [];
-    } else {
-      ElMessage.error(res.msg || '获取详情失败');
-    }
-  } catch (error) {
-    ElMessage.error('获取详情失败');
-  } finally {
-    detailLoading.value = false;
-  }
+const handleViewDetail = (row: any) => {
+  router.push({
+    name: 'enzymeTaskDetail',
+    params: { uuid: row.uuid }
+  });
 };
 
 const handleCancel = async (row: any) => {
@@ -331,6 +265,15 @@ const handlePageChange = (val: number) => {
   fetchData();
 };
 
+const copyToClipboard = async (text: string, label: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    ElMessage.success(`${label}已复制到剪贴板`);
+  } catch (error) {
+    ElMessage.error('复制失败');
+  }
+};
+
 onBeforeUnmount(() => {
   stopPolling();
 });
@@ -340,7 +283,6 @@ onMounted(fetchData);
 
 <style scoped lang="scss">
 .results-page { padding: 20px; background: #f8fafc; }
-.results-table-card { border-radius: 8px; border: none; }
 .filter-bar { margin-bottom: 16px; }
 
 .results-pagination {
@@ -350,35 +292,46 @@ onMounted(fetchData);
   background: #fff;
 }
 
-.uuid-text, .sequence-text, .smiles-text, .pdb-text { 
+.serial-number {
+  font-weight: 600;
+  color: #409eff;
+  font-size: 14px;
+}
+
+.sequence-text, .smiles-text, .pdb-text { 
   font-family: monospace; 
   font-size: 12px; 
   color: #334155; 
   word-break: break-all; 
 }
 
+.copyable-text {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.copyable-text:hover {
+  color: #409eff;
+}
+
 .stage-text { font-size: 12px; color: #475569; }
+.duration-text { 
+  font-size: 11px; 
+  color: #64748b; 
+  margin-top: 4px;
+}
 .result-count { font-size: 14px; font-weight: 600; color: #409eff; }
 .action-buttons { display: flex; gap: 4px; flex-wrap: wrap; }
 
-.detail-custom-dialog {
-  :deep(.el-dialog__body) {
-    padding: 20px;
-  }
+:deep(.el-tooltip__popper.multiline-tooltip) {
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+  max-width: 600px !important;
 }
 
-.detail-content {
-  min-height: 200px;
-}
-
-.task-info {
-  margin-bottom: 20px;
-}
-
-.detail-textarea {
-  :deep(.el-textarea__inner) {
-    font-family: monospace;
-    font-size: 12px;
-  }
+:deep(.multiline-tooltip .el-tooltip__inner) {
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+  max-width: 600px !important;
 }
 </style>

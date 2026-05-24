@@ -66,8 +66,8 @@ export function getEnzymeTaskDetail(taskUuid: string) {
 export function cancelEnzymeTask(data: { uuid: string }) {
 	return request({
 		url: '/api/system/enzyme/task/cancel/',
-		method: 'get',
-		params: data,
+		method: 'post',
+		data,
 	});
 }
 
