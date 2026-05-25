@@ -43,10 +43,12 @@
 								v-model="form.sequence"
 								type="textarea"
 								:rows="5"
-								placeholder="请输入酶的氨基酸序列"
+								placeholder="请输入酶的氨基酸序列（最多1000个字符）"
 								clearable
 								:resize="'none'"
 								class="sequence-input"
+								maxlength="1000"
+								show-word-limit
 							/>
 						</el-form-item>
 						
@@ -57,20 +59,25 @@
 									PDB 文件
 								</span>
 							</template>
-							<el-upload
-								ref="pdbUpload"
-								:limit="1"
-								:show-file-list="true"
-								:on-change="handlePdbChange"
-								:on-remove="handlePdbRemove"
-								:before-upload="beforePdbUpload"
-								:auto-upload="false"
-								accept=".pdb"
-							>
-								<el-button type="primary">选择 PDB 文件</el-button>
-								<template #tip>
-								</template>
-							</el-upload>
+							<div class="pdb-upload-wrapper">
+								<el-upload
+									ref="pdbUpload"
+									:limit="1"
+									:show-file-list="false"
+									:on-change="handlePdbChange"
+									:on-remove="handlePdbRemove"
+									:before-upload="beforePdbUpload"
+									:auto-upload="false"
+									accept=".pdb"
+								>
+									<el-button type="primary">选择 PDB 文件</el-button>
+								</el-upload>
+								<div v-if="pdbFile" class="pdb-file-info">
+									<el-icon><ele-Document /></el-icon>
+									<span class="pdb-filename">{{ pdbFile.name }}</span>
+									<el-icon class="pdb-remove" @click="handleRemovePdb"><ele-Close /></el-icon>
+								</div>
+							</div>
 							<el-progress v-if="uploadingPdb" :percentage="uploadProgress" style="margin-top: 10px;" />
 						</el-form-item>
 						
@@ -448,13 +455,40 @@ const handleConfirmSmiles = () => {
 	}
 };
 
-const handlePdbChange = (file: any) => {
+const handlePdbChange = async (file: any) => {
 	pdbFile.value = file.raw;
+	
+	// 立即上传 PDB 文件
+	try {
+		uploadingPdb.value = true;
+		
+		const uuid = await uploadPdbFile();
+		pdbUuid.value = uuid;
+	} catch (error: any) {
+		console.error('PDB 文件上传失败:', error);
+		ElMessage.error(error.message || 'PDB 文件上传失败');
+		// 上传失败时清除文件
+		pdbFile.value = null;
+		pdbUuid.value = '';
+		if (pdbUpload.value) {
+			pdbUpload.value.clearFiles();
+		}
+	} finally {
+		uploadingPdb.value = false;
+	}
 };
 
 const handlePdbRemove = () => {
 	pdbFile.value = null;
 	pdbUuid.value = '';
+};
+
+const handleRemovePdb = () => {
+	pdbFile.value = null;
+	pdbUuid.value = '';
+	if (pdbUpload.value) {
+		pdbUpload.value.clearFiles();
+	}
 };
 
 const beforePdbUpload = (file: File) => {
@@ -511,6 +545,12 @@ const parsePocketSites = (): number[] => {
 const handleSubmit = async () => {
 	if (!form.sequence.trim()) {
 		ElMessage.warning('请输入序列信息');
+		return;
+	}
+
+	// 检查序列长度
+	if (form.sequence.trim().length > 1000) {
+		ElMessage.warning('序列长度不能超过1000个字符');
 		return;
 	}
 
@@ -605,6 +645,16 @@ onBeforeUnmount(() => {
 		font-size: 13px;
 		line-height: 1.5;
 		resize: none !important;
+		padding-bottom: 24px !important;
+	}
+
+	:deep(.el-input__count) {
+		bottom: 4px !important;
+		right: 8px !important;
+		background: rgba(255, 255, 255, 0.9) !important;
+		padding: 2px 6px !important;
+		border-radius: 4px !important;
+		font-size: 12px !important;
 	}
 }
 
@@ -676,6 +726,50 @@ onBeforeUnmount(() => {
 	.el-icon {
 		font-size: 12px;
 		color: var(--el-color-info);
+	}
+}
+
+.pdb-upload-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.pdb-file-info {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 12px;
+	background: var(--el-fill-color-light);
+	border-radius: 6px;
+	border: 1px solid var(--el-border-color-lighter);
+	max-width: 400px;
+	
+	.el-icon:first-child {
+		color: var(--el-color-primary);
+		font-size: 16px;
+	}
+	
+	.pdb-filename {
+		flex: 1;
+		font-size: 13px;
+		color: var(--el-text-color-regular);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	
+	.pdb-remove {
+		cursor: pointer;
+		color: var(--el-text-color-secondary);
+		font-size: 16px;
+		transition: all 0.2s;
+		
+		&:hover {
+			color: var(--el-color-danger);
+			transform: scale(1.1);
+		}
 	}
 }
 
@@ -920,4 +1014,3 @@ onBeforeUnmount(() => {
 	}
 }
 </style>
-
