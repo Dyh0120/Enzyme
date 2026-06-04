@@ -84,13 +84,13 @@
             <div class="action-buttons">
               <el-button type="primary" link @click="handleViewDetail(row)">查看详情</el-button>
               
-              <el-button 
+              <!-- <el-button 
                 v-if="row.status === 0 && !row.cancel_requested"
                 type="warning" 
                 link 
                 :loading="buttonLoading[row.uuid]"
                 @click="handleCancel(row)"
-              >取消</el-button>
+              >取消</el-button> -->
               
               <el-popconfirm title="确认删除任务？" @confirm="handleDelete(row)">
                 <template #reference>
