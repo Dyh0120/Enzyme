@@ -70,7 +70,8 @@
 		"vue-qr": "^4.0.9",
 		"vue-router": "^4.4.3",
 		"vxe-table": "^4.6.18",
-		"xe-utils": "^3.5.30"
+		"xe-utils": "^3.5.30",
+		"xlsx": "^0.18.5"
 	},
 	"devDependencies": {
 		"@popperjs/core": "^2.11.8",

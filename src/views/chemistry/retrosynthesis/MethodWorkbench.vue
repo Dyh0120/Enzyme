@@ -4,7 +4,7 @@
 			<div class="retro-hero__content">
 				<div>
 					<p class="retro-hero__eyebrow">Enzyme Optimization · AI Powered</p>
-					<h1 class="retro-hero__title">酶优化计算工作台</h1>
+					<h1 class="retro-hero__title">酶优化计算工作平台</h1>
 					<p class="retro-hero__description">
 						基于序列信息、PDB 结构文件和底物 SMILES，通过 AI 模型进行酶活性位点优化计算。
 					</p>
@@ -27,7 +27,7 @@
 				<el-card class="retro-form-card" shadow="hover">
 					<template #header>
 						<div class="card-header">
-							<span class="card-title">酶优化参数输入</span>
+							<span class="card-title">参数输入</span>
 						</div>
 					</template>
 					
@@ -112,6 +112,26 @@
 								class="smiles-input"
 							/>
 						</el-form-item>
+
+						<el-form-item label="优化目标">
+							<template #label>
+								<span class="form-label">
+									<el-icon><ele-Setting /></el-icon>
+									优化目标
+								</span>
+							</template>
+							<el-checkbox-group v-model="predictionTypes" class="prediction-type-group">
+								<el-checkbox
+									v-for="item in predictionTypeOptions"
+									:key="item.value"
+									:label="item.value"
+									:value="item.value"
+									border
+								>
+									{{ item.label }}
+								</el-checkbox>
+							</el-checkbox-group>
+						</el-form-item>
 						
 						<div class="retro-form__actions">
 							<el-button type="success" size="large" :loading="loading" @click="handleSubmit">
@@ -159,7 +179,7 @@
 								>
 									<template #title>
 										<div class="tip-item">
-											<strong>序列信息：</strong>输入酶的氨基酸序列，FASTA 格式或纯字母序列均可
+											<strong>序列信息：</strong>输入酶的氨基酸序列
 										</div>
 									</template>
 								</el-alert>
@@ -171,7 +191,7 @@
 								>
 									<template #title>
 										<div class="tip-item">
-											<strong>PDB 文件：</strong>上传酶的三维结构文件，用于精修结构和能量计算
+											<strong>PDB 文件：</strong>上传酶的三维结构文件
 										</div>
 									</template>
 								</el-alert>
@@ -220,10 +240,6 @@
 								<div class="ref-item">
 									<el-tag size="small" type="success">PDB</el-tag>
 									<span>蛋白质数据库格式</span>
-								</div>
-								<div class="ref-item">
-									<el-tag size="small" type="warning">FASTA</el-tag>
-									<span>生物序列格式</span>
 								</div>
 							</div>
 						</el-card>
@@ -274,6 +290,24 @@
 				</div>
 			</template>
 		</el-dialog>
+
+		<!-- 序列/参数校验警示弹窗（居中模态） -->
+		<teleport to="body">
+			<transition name="enzyme-alert-fade">
+				<div v-if="centerAlert.visible" class="enzyme-alert-mask" @click.self="closeCenterAlert">
+					<div class="enzyme-alert" role="alertdialog" aria-modal="true">
+						<div class="enzyme-alert__header">
+							<el-icon class="enzyme-alert__icon"><ele-CloseBold /></el-icon>
+							<span class="enzyme-alert__title">{{ centerAlert.title }}</span>
+						</div>
+						<div class="enzyme-alert__body">{{ centerAlert.message }}</div>
+						<div class="enzyme-alert__footer">
+							<button type="button" class="enzyme-alert__confirm" @click="closeCenterAlert">确定</button>
+						</div>
+					</div>
+				</div>
+			</transition>
+		</teleport>
 	</div>
 </template>
 
@@ -294,6 +328,25 @@ const pdbUpload = ref<any>(null);
 const pdbFile = ref<File | null>(null);
 const pdbUuid = ref<string>('');
 const pocketSitesInput = ref<string>('');
+const predictionTypes = ref<string[]>([]);
+
+const predictionTypeOptions: { label: string; value: string; frontendOnly?: boolean }[] = [
+  { label: '活性', value: '0' },
+  { label: '温度', value: '1' },
+  { label: '表达量', value: '2' },
+  // 可溶性/疏水性：先只在前端展示，提交时不发送给后端（后端暂不支持）
+  { label: '可溶性', value: '3', frontendOnly: true },
+  { label: '疏水性', value: '4', frontendOnly: true },
+];
+
+// 前端专用（暂不提交后端）的优化目标值集合
+const frontendOnlyTypeValues = predictionTypeOptions
+	.filter(item => item.frontendOnly)
+	.map(item => item.value);
+
+// 提交给后端的优化目标：过滤掉仅前端展示的项（如可溶性/疏水性）
+const getBackendPredictionTypes = (): string[] =>
+	predictionTypes.value.filter(v => !frontendOnlyTypeValues.includes(v));
 
 const form = reactive({
   sequence: '',
@@ -455,27 +508,22 @@ const handleConfirmSmiles = () => {
 	}
 };
 
-const handlePdbChange = async (file: any) => {
-	pdbFile.value = file.raw;
-	
-	// 立即上传 PDB 文件
-	try {
-		uploadingPdb.value = true;
-		
-		const uuid = await uploadPdbFile();
-		pdbUuid.value = uuid;
-	} catch (error: any) {
-		console.error('PDB 文件上传失败:', error);
-		ElMessage.error(error.message || 'PDB 文件上传失败');
-		// 上传失败时清除文件
+// 校验文件名后缀是否为 .pdb（大小写不敏感）
+const isPdbFile = (name: string): boolean => /\.pdb$/i.test(name ?? '');
+
+const handlePdbChange = (file: any) => {
+	const raw = file?.raw;
+	// 校验文件后缀必须为 .pdb
+	if (!raw || !isPdbFile(raw.name)) {
+		showCenterAlert('只支持 .pdb 后缀的文件，请重新选择', '文件校验不通过');
 		pdbFile.value = null;
-		pdbUuid.value = '';
 		if (pdbUpload.value) {
 			pdbUpload.value.clearFiles();
 		}
-	} finally {
-		uploadingPdb.value = false;
+		return;
 	}
+	pdbFile.value = raw;
+	ElMessage.success('PDB 文件已选择');
 };
 
 const handlePdbRemove = () => {
@@ -492,12 +540,21 @@ const handleRemovePdb = () => {
 };
 
 const beforePdbUpload = (file: File) => {
+	// 上传前校验后缀必须为 .pdb
+	if (!isPdbFile(file?.name)) {
+		showCenterAlert('只支持 .pdb 后缀的文件，请重新选择', '文件校验不通过');
+		return false;
+	}
 	return true;
 };
 
 const uploadPdbFile = async (): Promise<string> => {
 	if (!pdbFile.value) {
 		throw new Error('请选择 PDB 文件');
+	}
+	// 提交前再次校验后缀必须为 .pdb
+	if (!isPdbFile(pdbFile.value.name)) {
+		throw new Error('PDB 文件后缀必须为 .pdb，请重新选择');
 	}
 
 	uploadingPdb.value = true;
@@ -542,31 +599,168 @@ const parsePocketSites = (): number[] => {
 		.filter(n => !isNaN(n));
 };
 
+// 20 种标准氨基酸大写单字母
+const STANDARD_AMINO_ACIDS = 'ARNDCQEGHILKMFPSTWYV';
+
+/**
+ * 校验序列信息
+ * 规则：只允许 20 种标准氨基酸大写单字母；必须全大写（小写直接非法）；
+ *       不能包含空格、数字、换行、X/B/Z/* 等非标准字符；空字符串直接报错。
+ * @returns 合法返回空字符串，非法返回对应错误提示
+ */
+const validateSequence = (raw: string): string => {
+	const seq = raw ?? '';
+	if (!seq.trim()) {
+		return '请输入序列信息';
+	}
+	// 空格、制表符、换行等空白字符一律非法
+	if (/\s/.test(seq)) {
+		return '序列信息不能包含空格或换行，请输入连续的氨基酸单字母序列';
+	}
+	// 只允许 20 种标准氨基酸大写单字母
+	if (!new RegExp(`^[${STANDARD_AMINO_ACIDS}]+$`).test(seq)) {
+		// 区分“含小写字母”与“含其他非法字符”，给出更明确的提示
+		if (/[a-z]/.test(seq)) {
+			return '序列信息必须使用大写字母，检测到小写字母，请全部改为大写';
+		}
+		return '序列信息只能包含 20 种标准氨基酸大写单字母（A,R,N,D,C,Q,E,G,H,I,L,K,M,F,P,S,T,W,Y,V），不能包含数字、X/B/Z/* 等非标准字符';
+	}
+	return '';
+};
+
+// SMILES 语法校验用常量
+const SMILES_ORGANIC_ATOMS = ['B', 'C', 'N', 'O', 'P', 'S', 'F', 'I', 'b', 'c', 'n', 'o', 'p', 's'];
+const SMILES_TWO_LETTER_ATOMS = ['Cl', 'Br'];
+const SMILES_INVALID_START = new Set([')', ']', '(', '=', '#', '-', ':', '.', '/', '\\']);
+const SMILES_INVALID_END = new Set(['(', '[', '=', '#', '-', ':', '.', '/', '\\']);
+
+/**
+ * 校验底物信息（SMILES 格式）：语法级校验
+ * 规则：只允许 SMILES 语法字符；圆/方括号配对；环闭合编号成对；方括号外只允许有机子集原子；首尾字符合法。
+ * @returns 合法返回空字符串，非法返回对应错误提示
+ */
+const validateSmiles = (raw: string): string => {
+	const s = (raw ?? '').trim();
+	if (!s) {
+		return '请输入底物信息 (SMILES)';
+	}
+	if (/\s/.test(s)) {
+		return 'SMILES 格式不正确：不能包含空格或换行';
+	}
+	// 只允许 SMILES 语法字符
+	if (!/^[A-Za-z0-9@+\-\[\]()\\\/%=#\$:.*]+$/.test(s)) {
+		return 'SMILES 格式不正确：含有非法字符，请输入合法的 SMILES 结构式';
+	}
+	// 括号配对 + 环闭合编号（方括号内为同位素/电荷等，不参与统计）
+	const stack: string[] = [];
+	const ring: Record<string, number> = {};
+	let bracket = 0;
+	for (let i = 0; i < s.length; i++) {
+		const ch = s[i];
+		if (ch === '[') {
+			bracket++;
+			stack.push('[');
+			continue;
+		}
+		if (ch === ']') {
+			if (stack.pop() !== '[') return 'SMILES 格式不正确：方括号不匹配';
+			bracket--;
+			continue;
+		}
+		if (ch === '(') {
+			stack.push('(');
+			continue;
+		}
+		if (ch === ')') {
+			if (stack.pop() !== '(') return 'SMILES 格式不正确：圆括号不匹配';
+			continue;
+		}
+		if (bracket > 0) continue;
+		// 原子符号（方括号外只允许有机子集原子）
+		if (/[A-Za-z]/.test(ch)) {
+			const two = s.slice(i, i + 2);
+			if (SMILES_TWO_LETTER_ATOMS.includes(two)) {
+				i++;
+				continue;
+			}
+			if (!SMILES_ORGANIC_ATOMS.includes(ch)) return `SMILES 格式不正确：非法原子符号 "${ch}"`;
+			continue;
+		}
+		// 环闭合编号
+		if (ch === '%') {
+			const num = s.slice(i + 1, i + 3);
+			if (!/^[0-9]{2}$/.test(num)) return 'SMILES 格式不正确：环闭合编号应为 % 加两位数字';
+			ring['%' + num] = (ring['%' + num] || 0) + 1;
+			i += 2;
+			continue;
+		}
+		if (/[0-9]/.test(ch)) {
+			ring[ch] = (ring[ch] || 0) + 1;
+			continue;
+		}
+	}
+	if (stack.length) return 'SMILES 格式不正确：括号不匹配';
+	for (const key in ring) {
+		if (ring[key] % 2 !== 0) return `SMILES 格式不正确：环闭合编号 "${key}" 未成对闭合`;
+	}
+	// 首尾字符结构检查
+	if (SMILES_INVALID_START.has(s[0])) return 'SMILES 格式不正确：起始字符非法';
+	if (SMILES_INVALID_END.has(s[s.length - 1])) return 'SMILES 格式不正确：结束字符非法';
+	return '';
+};
+
+// 警示错误弹窗状态
+const centerAlert = reactive({
+	visible: false,
+	title: '校验不通过',
+	message: '',
+});
+
+// 弹窗式校验提醒：居中模态弹窗（深红标题条 + 确定按钮）
+const showCenterAlert = (message: string, title = '校验不通过') => {
+	centerAlert.title = title;
+	centerAlert.message = message;
+	centerAlert.visible = true;
+};
+
+// 关闭弹窗
+const closeCenterAlert = () => {
+	centerAlert.visible = false;
+};
+
 const handleSubmit = async () => {
-	if (!form.sequence.trim()) {
-		ElMessage.warning('请输入序列信息');
+	// 校验序列信息
+	const sequenceError = validateSequence(form.sequence);
+	if (sequenceError) {
+		showCenterAlert(sequenceError, '序列校验不通过');
 		return;
 	}
 
 	// 检查序列长度
 	if (form.sequence.trim().length > 1000) {
-		ElMessage.warning('序列长度不能超过1000个字符');
+		showCenterAlert('序列长度不能超过1000个字符', '序列校验不通过');
 		return;
 	}
 
 	if (!pdbFile.value) {
-		ElMessage.warning('请上传 PDB 文件');
+		showCenterAlert('请上传 PDB 文件');
 		return;
 	}
 
 	const pocketSites = parsePocketSites();
 	if (pocketSites.length === 0) {
-		ElMessage.warning('请输入位点信息');
+		showCenterAlert('请输入位点信息');
 		return;
 	}
 
-	if (!form.smiles.trim()) {
-		ElMessage.warning('请输入底物信息 (SMILES)');
+	const smilesError = validateSmiles(form.smiles);
+	if (smilesError) {
+		showCenterAlert(smilesError, '底物信息校验不通过');
+		return;
+	}
+
+	if (predictionTypes.value.length === 0) {
+		showCenterAlert('请至少选择一种优化目标');
 		return;
 	}
 
@@ -582,7 +776,9 @@ const handleSubmit = async () => {
 			sequence: form.sequence.trim(),
 			smiles: form.smiles.trim(),
 			pdb_uuid: pdbUuid.value,
-			pocket_sites: pocketSites
+			pocket_sites: pocketSites,
+			// 可溶性/疏水性为先前端展示项，暂不提交给后端
+			prediction_type: getBackendPredictionTypes()
 		};
 
 		const response = await axios.post('/api/system/enzyme/task/create/', postData);
@@ -592,6 +788,7 @@ const handleSubmit = async () => {
 			form.sequence = '';
 			form.smiles = '';
 			pocketSitesInput.value = '';
+			predictionTypes.value = [];
 			if (pdbUpload.value) {
 				pdbUpload.value.clearFiles();
 			}
@@ -609,8 +806,8 @@ const handleSubmit = async () => {
 };
 
 const handleLoadExample = () => {
-	form.sequence = 'MGYARRVMDGIGEVAVTGAGGSVTGARLRHQVRLLAHALTEAGIPPGRGVACLHANTWRAIALRLAVQAIGCHYVGLRPTAAVTEQARAIAAADSAALVFEPSVEARAADLLERVSVPVVLSLGPTSRGRDILAASVPEGTPLRYREHPEGIAVVAFTSGTTGTPKGVAHSSTAMSACVDAAVSMYGRGPWRFLIPIPLSDLGGELAQCTLATGGTVVLLEEFQPDAVLEAIERERATHVFLAPNWLYQLAEHPALPRSDLSSLRRVVYGGAPAVPSRVAAARERMGAVLMQNYGTQEAAFIAALTPDDHARRELLTAVGRPLPHVEVEIRDDSGGTLPRGAVGEVWVRSPMTMSGYWRDPERTAQVLSGGWLRTGDVGTFDEDGHLHLTDRLQDIIIVEAYNVYSRRVEHVLTEHPDVRAAAVVGVPDPDSGEAVCAAVVVADGADPDPEHLRALVRDHLGDLHVPRRVEFVRSIPVTPAGKPDKVKVRTWFTD';
-	form.smiles = 'NCCC1=CC(O)=C(O)C=C1';
+	form.sequence = 'MSENTFIFPATFMWGTSTSSYQIEGGTDEGGRTPSIWDTFCQIPGKVIGGDCGDVACDHFHHFKEDVQLMKQLGFLHYRFSVAWPRIMPAAGIINEEGLLFYEHLLDEIELAGLIPMLTLYHWDLPQWIEDEGGWTQRETIQHFKTYASVIMDRFGERINWWNTINEPYCASILGYGTGEHAPGHENWREAFTAAHHILMCHGIASNLHKEKGLTGKIGITLNMEHVDAASERPEDVAAAIRRDGFINRWFAEPLFNGKYPEDMVEWYGTYLNGLDFVQPGDMELIQQPGDFLGINYYTRSIIRSTNDASLLQVEQVHMEEPVTDMGWEIHPESFYKLLTRIEKDFSKGLPILITENGAAMRDELVNGQIEDTGRHGYIEEHLKACHRFIEEGGQLKGYFVWSFLDNFEWAWGYSKRFGIVHINYETQERTPKQSALWFKQMMAKNGF';
+	form.smiles = 'O=[N+]([O-])c1ccc(O[C@@H]2O[C@H](CO)[C@@H](O)[C@H](O)[C@H]2O)cc1';
 	pocketSitesInput.value = '154, 197, 300, 407';
 	ElMessage.success('示例数据已加载');
 };
@@ -635,6 +832,17 @@ onBeforeUnmount(() => {
 	.retro-hero {
 		border: none;
 		background: #fff;
+	}
+}
+
+.prediction-type-group {
+	:deep(.el-checkbox-button),
+	:deep(.el-checkbox) {
+		margin-right: 4px;
+	}
+
+	:deep(.el-checkbox:last-child) {
+		margin-right: 0;
 	}
 }
 
@@ -981,6 +1189,92 @@ onBeforeUnmount(() => {
 		flex-direction: column;
 		align-items: flex-start;
 	}
+}
+
+/* 序列/参数校验警示弹窗（居中模态、扁平科研风） */
+.enzyme-alert-mask {
+	position: fixed;
+	inset: 0;
+	z-index: 3000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px;
+	background: rgba(17, 24, 39, 0.45);
+}
+
+.enzyme-alert {
+	width: 460px;
+	max-width: 100%;
+	background: #ffffff;
+	border-radius: 6px;
+	overflow: hidden;
+	box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
+}
+
+.enzyme-alert__header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 11px 18px;
+	background: #c62828;
+}
+
+.enzyme-alert__icon {
+	color: #ffffff;
+	font-size: 16px;
+}
+
+.enzyme-alert__title {
+	color: #ffffff;
+	font-size: 15px;
+	font-weight: 700;
+	letter-spacing: 0.3px;
+}
+
+.enzyme-alert__body {
+	padding: 22px 20px;
+	color: #1f2937;
+	font-size: 14px;
+	line-height: 1.7;
+	word-break: break-all;
+}
+
+.enzyme-alert__footer {
+	display: flex;
+	justify-content: flex-end;
+	padding: 0 18px 16px;
+}
+
+.enzyme-alert__confirm {
+	min-width: 88px;
+	height: 34px;
+	padding: 0 18px;
+	border: none;
+	border-radius: 4px;
+	background: #d32f2f;
+	color: #ffffff;
+	font-size: 14px;
+	cursor: pointer;
+	transition: background 0.2s;
+}
+
+.enzyme-alert__confirm:hover {
+	background: #b71c1c;
+}
+
+.enzyme-alert__confirm:active {
+	background: #a01b16;
+}
+
+.enzyme-alert-fade-enter-active,
+.enzyme-alert-fade-leave-active {
+	transition: opacity 0.18s ease;
+}
+
+.enzyme-alert-fade-enter-from,
+.enzyme-alert-fade-leave-to {
+	opacity: 0;
 }
 </style>
 

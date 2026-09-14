@@ -15,6 +15,8 @@ import piniaPersist from 'pinia-plugin-persist';
 import fastCrud from './settings.ts';
 import pinia from './stores';
 import {RegisterPermission} from '/@/plugin/permission/index';
+// 全站等比缩放适配（设计基准 1920×1080，大屏放大 / 小屏缩小）
+import { initScreenScale } from '/@/utils/screenScale';
 // @ts-ignore
 import eIconPicker, { iconList, analyzingIconForIconfont } from 'e-icon-picker';
 import 'e-icon-picker/icon/default-icon/symbol.js'; //基本彩色图标库
@@ -63,5 +65,8 @@ app.use(pinia)
 	.use(VueGridLayout)
 	.use(fastCrud)
 	.mount('#app');
+
+// 全站等比缩放适配（设计基准 1920×1080）：挂载后立即应用，避免首屏闪烁
+initScreenScale();
 
 app.config.globalProperties.mittBus = mitt();

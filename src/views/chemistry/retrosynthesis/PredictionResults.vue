@@ -5,7 +5,6 @@
         <el-option label="全部" :value="null" />
         <el-option label="处理中" :value="0" />
         <el-option label="已完成" :value="1" />
-        <el-option label="已删除" :value="2" />
         <el-option label="失败" :value="3" />
       </el-select>
     </div>
@@ -19,12 +18,7 @@
 
         <el-table-column label="序列信息" min-width="200">
           <template #default="{ row }">
-            <el-tooltip placement="top" popper-class="multiline-tooltip">
-              <template #content>
-                <div style="white-space: pre-wrap; word-break: break-all; max-width: 600px;">{{ row.sequence }}</div>
-              </template>
-              <span class="sequence-text copyable-text" @click="copyToClipboard(row.sequence, '序列')" style="display: block; width: 100%; height: 100%; padding: 8px 0;">{{ row.sequence.substring(0, 50) }}{{ row.sequence.length > 50 ? '...' : '' }}</span>
-            </el-tooltip>
+            <span class="sequence-text copyable-text" @click="copyToClipboard(row.sequence, '序列')" style="display: block; width: 100%; height: 100%; padding: 8px 0;">{{ row.sequence.substring(0, 50) }}{{ row.sequence.length > 50 ? '...' : '' }}</span>
           </template>
         </el-table-column>
 
@@ -36,18 +30,30 @@
 
         <el-table-column label="底物SMILES" min-width="180">
           <template #default="{ row }">
-            <el-tooltip placement="top" popper-class="multiline-tooltip">
-              <template #content>
-                <div style="white-space: pre-wrap; word-break: break-all; max-width: 600px;">{{ row.smiles }}</div>
-              </template>
-              <span class="smiles-text copyable-text" @click="copyToClipboard(row.smiles, 'SMILES')" style="display: block; width: 100%; height: 100%; padding: 8px 0;">{{ row.smiles }}</span>
-            </el-tooltip>
+            <span class="smiles-text copyable-text" @click="copyToClipboard(row.smiles, 'SMILES')" style="display: block; width: 100%; height: 100%; padding: 8px 0;">{{ row.smiles }}</span>
           </template>
         </el-table-column>
 
         <el-table-column label="位点信息" width="150">
           <template #default="{ row }">
             <el-tag size="small" type="info">{{ row.pocket_sites?.join(', ') || '-' }}</el-tag>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="优化目标" width="180">
+          <template #default="{ row }">
+            <div class="prediction-types">
+              <el-tag
+                v-for="(tag, idx) in formatPredictionTypes(row.prediction_type)"
+                :key="idx"
+                :type="getPredictionTypeTagType(tag.value)"
+                size="small"
+                style="margin-right: 4px; margin-bottom: 2px;"
+              >
+                {{ tag.label }}
+              </el-tag>
+              <span v-if="!row.prediction_type || (Array.isArray(row.prediction_type) && row.prediction_type.length === 0)">-</span>
+            </div>
           </template>
         </el-table-column>
 
@@ -71,9 +77,9 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="结果数量" width="70">
+        <el-table-column label="结果数量" width="100">
           <template #default="{ row }">
-            <span class="result-count">{{ row.result_count || 0 }}</span>
+            <span class="result-count">{{ getResultCount(row) }}</span>
           </template>
         </el-table-column>
 
@@ -82,7 +88,11 @@
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <div class="action-buttons">
-              <el-button type="primary" link @click="handleViewDetail(row)">查看详情</el-button>
+              <el-button 
+                type="primary" 
+                link 
+                :disabled="row.status !== 1"
+                @click="handleViewDetail(row)">查看详情</el-button>
               
               <!-- <el-button 
                 v-if="row.status === 0 && !row.cancel_requested"
@@ -145,6 +155,45 @@ const getStatusType = (status: number) => {
   };
   return typeMap[status] || 'info';
 };
+
+const predictionTypeLabelMap: Record<string, string> = {
+  '0': '活性',
+  '1': '温度',
+  '2': '表达量',
+  '3': '可溶性',
+  '4': '疏水性',
+};
+
+const formatPredictionTypes = (predictionType: any): { value: string; label: string }[] => {
+  if (!predictionType) return [];
+  
+  let types: string[] = [];
+  if (Array.isArray(predictionType)) {
+    types = predictionType.map(String);
+  } else if (typeof predictionType === 'string') {
+    types = predictionType.split(',').map(s => s.trim()).filter(Boolean);
+  } else if (typeof predictionType === 'number') {
+    types = [String(predictionType)];
+  }
+  
+  return types
+    .filter(v => predictionTypeLabelMap[v])
+    .map(v => ({ value: v, label: predictionTypeLabelMap[v] }));
+};
+
+const getPredictionTypeTagType = (value: string) => {
+  const typeMap: Record<string, any> = {
+    '0': 'primary',
+    '1': 'warning',
+    '2': 'success',
+    '3': 'danger',
+    '4': 'info',
+  };
+  return typeMap[value] || 'info';
+};
+
+// 结果数量：后端返回条数排除一条原始（未更改）的酶
+const getResultCount = (row: any): number => Math.max(0, (row?.result_count || 0) - 1);
 
 const calculateDuration = (startTime: string, endTime: string): string => {
   if (!startTime || !endTime) return '-';
@@ -322,16 +371,4 @@ onMounted(fetchData);
 }
 .result-count { font-size: 14px; font-weight: 600; color: #409eff; }
 .action-buttons { display: flex; gap: 4px; flex-wrap: wrap; }
-
-:deep(.el-tooltip__popper.multiline-tooltip) {
-  white-space: pre-wrap !important;
-  word-break: break-all !important;
-  max-width: 600px !important;
-}
-
-:deep(.multiline-tooltip .el-tooltip__inner) {
-  white-space: pre-wrap !important;
-  word-break: break-all !important;
-  max-width: 600px !important;
-}
 </style>
