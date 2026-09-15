@@ -99,9 +99,7 @@
 				</div>
 			</div>
 		</div>
-	</div>
-	<div v-if="loginBg">
-		<img :src="loginBg" class="loginBg fixed inset-0 z-1 w-full h-full" />
+		<img v-if="loginBg" :src="loginBg" class="loginBg fixed inset-0 z-1 w-full h-full" />
 	</div>
 </template>
 

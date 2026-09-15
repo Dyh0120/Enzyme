@@ -29,7 +29,7 @@
               <el-descriptions-item label="优化目标">
                 <div class="prediction-types">
                   <el-tag
-                    v-for="(tag, idx) in formatPredictionTypes(currentTask.prediction_type)"
+                    v-for="(tag, idx) in formatPredictionTypes(getRawPredictionTypes(currentTask))"
                     :key="idx"
                     :type="getPredictionTypeTagType(tag.value)"
                     size="small"
@@ -37,12 +37,12 @@
                   >
                     {{ tag.label }}
                   </el-tag>
-                  <span v-if="!currentTask.prediction_type || (Array.isArray(currentTask.prediction_type) && currentTask.prediction_type.length === 0)">-</span>
+                  <span v-if="formatPredictionTypes(getRawPredictionTypes(currentTask)).length === 0">-</span>
                 </div>
               </el-descriptions-item>
               <el-descriptions-item label="PDB文件">{{ currentTask.pdb_file_name || '-' }}</el-descriptions-item>
               <el-descriptions-item label="位点信息">
-                <el-tag size="small" type="info">{{ currentTask.pocket_sites?.join(', ') || '-' }}</el-tag>
+                <el-tag size="small" type="info">{{ getDesignSites(currentTask).join(', ') || '-' }}</el-tag>
               </el-descriptions-item>
             </el-descriptions>
           </div>
@@ -68,9 +68,13 @@
                 <span class="smiles-text copyable-text" @click="copyToClipboard(row.smiles, 'SMILES')">{{ row.smiles }}</span>
               </template>
             </el-table-column>
-            <el-table-column v-if="hasPredictionType('0')" label="活性" prop="pred_kcat(s^-1)" width="100" align="center" />
-            <el-table-column v-if="hasPredictionType('1')" label="温度" prop="pred_opt_temp" width="100" align="center" />
-            <el-table-column v-if="hasPredictionType('2')" label="表达量" prop="expression_score" width="100" align="center" />
+            <el-table-column v-if="hasPredictionType('activity')" label="活性 (s⁻¹·M⁻¹)" prop="kcat_over_KM" width="140" align="center" />
+            <el-table-column v-if="hasPredictionType('stability')" label="热稳定性 (°C)" prop="T50_C" width="120" align="center" />
+            <el-table-column v-if="hasPredictionType('expression')" label="表达量 (mg/ml)" prop="yield" width="130" align="center" />
+            <el-table-column v-if="hasPredictionType('solubility')" label="可溶性 (mg/ml)" prop="solubility" width="130" align="center" />
+            <el-table-column v-if="hasPredictionType('hydrophobicity')" label="疏水性" prop="protein_gravy" width="120" align="center" />
+            <!-- 隐藏：疏水性变化(vs WT) 列（如需恢复取消注释） -->
+            <!-- <el-table-column v-if="hasPredictionType('hydrophobicity')" label="疏水性变化(vs WT)" prop="delta_gravy_vs_wt" width="100" align="center" /> -->
           </el-table>
           <el-empty v-else description="暂无优化结果" />
         </template>
@@ -93,13 +97,20 @@ const detailLoading = ref(false);
 const currentTask = ref<any>(null);
 const currentResults = ref<any[]>([]);
 
+// 优化目标值 -> 中文标签
 const predictionTypeLabelMap: Record<string, string> = {
-  '0': '活性',
-  '1': '温度',
-  '2': '表达量',
-  '3': '可溶性',
-  '4': '疏水性',
+  activity: '活性',
+  stability: '热稳定性',
+  expression: '表达量',
+  solubility: '可溶性',
+  hydrophobicity: '疏水性',
 };
+
+// 兼容后端 predict / prediction_type 两种字段命名
+const getRawPredictionTypes = (obj: any) => obj?.predict ?? obj?.prediction_type;
+
+// 位点信息字段：兼容 design_sites / pocket_sites
+const getDesignSites = (obj: any): any[] => obj?.design_sites ?? obj?.pocket_sites ?? [];
 
 const formatPredictionTypes = (predictionType: any): { value: string; label: string }[] => {
   if (!predictionType) return [];
@@ -120,18 +131,18 @@ const formatPredictionTypes = (predictionType: any): { value: string; label: str
 
 const getPredictionTypeTagType = (value: string) => {
   const typeMap: Record<string, any> = {
-    '0': 'primary',
-    '1': 'warning',
-    '2': 'success',
-    '3': 'danger',
-    '4': 'info',
+    activity: 'primary',
+    stability: 'warning',
+    expression: 'success',
+    solubility: 'danger',
+    hydrophobicity: 'info',
   };
   return typeMap[value] || 'info';
 };
 
 // 判断当前任务的优化目标是否包含指定类型
 const hasPredictionType = (value: string): boolean => {
-  return formatPredictionTypes(currentTask.value?.prediction_type).some(t => t.value === value);
+  return formatPredictionTypes(getRawPredictionTypes(currentTask.value)).some(t => t.value === value);
 };
 
 // 判断某条结果是否为原始（未更改）的酶：酶编号为 0，或序列与任务输入的原始序列一致
@@ -149,14 +160,16 @@ const tableRowClassName = ({ row }: { row: any }): string =>
 
 // 优化目标值 -> 结果数据字段 映射
 const targetFieldMap: Record<string, string> = {
-  '0': 'pred_kcat(s^-1)',
-  '1': 'pred_opt_temp',
-  '2': 'expression_score',
+  activity: 'kcat_over_KM',
+  stability: 'T50_C',
+  expression: 'yield',
+  solubility: 'solubility',
+  hydrophobicity: 'protein_gravy',
 };
 
 // 原始酶始终置顶；其余按“第一个优化目标”降序排序（无对应数值的排在最后）
 const sortResultsByFirstTarget = (results: any[]): any[] => {
-  const firstType = formatPredictionTypes(currentTask.value?.prediction_type)[0]?.value;
+  const firstType = formatPredictionTypes(getRawPredictionTypes(currentTask.value))[0]?.value;
   const field = firstType ? targetFieldMap[firstType] : '';
   const toNum = (v: any): number => {
     const n = Number(v);
@@ -202,9 +215,14 @@ const handleDownloadResults = () => {
     { title: '序列', key: 'sequence' },
     { title: 'SMILES', key: 'smiles' },
   ];
-  if (hasPredictionType('0')) columns.push({ title: '活性', key: 'pred_kcat(s^-1)' });
-  if (hasPredictionType('1')) columns.push({ title: '温度', key: 'pred_opt_temp' });
-  if (hasPredictionType('2')) columns.push({ title: '表达量', key: 'expression_score' });
+  if (hasPredictionType('activity')) columns.push({ title: '活性 (s⁻¹·M⁻¹)', key: 'kcat_over_KM' });
+  if (hasPredictionType('stability')) columns.push({ title: '热稳定性 (°C)', key: 'T50_C' });
+  if (hasPredictionType('expression')) columns.push({ title: '表达量 (mg/ml)', key: 'yield' });
+  if (hasPredictionType('solubility')) columns.push({ title: '可溶性 (mg/ml)', key: 'solubility' });
+  if (hasPredictionType('hydrophobicity')) {
+    columns.push({ title: '疏水性(GRAVY)', key: 'protein_gravy' });
+    // columns.push({ title: 'ΔGRAVY(vs WT)', key: 'delta_gravy_vs_wt' }); // 隐藏：疏水性变化(vs WT) 列
+  }
 
   // 组装二维数组：首行表头 + 数据行（空值统一转空字符串）
   const aoa: (string | number)[][] = [
@@ -226,9 +244,12 @@ const handleDownloadResults = () => {
     '__type__': 10,
     'sequence': 60,
     'smiles': 30,
-    'pred_kcat(s^-1)': 14,
-    'pred_opt_temp': 12,
-    'expression_score': 12,
+    'kcat_over_KM': 14,
+    'T50_C': 12,
+    'yield': 12,
+    'solubility': 12,
+    'protein_gravy': 14,
+    // 'delta_gravy_vs_wt': 14, // 隐藏：疏水性变化(vs WT) 列
   };
   worksheet['!cols'] = columns.map(col => ({ wch: widthMap[col.key] || 14 }));
 
@@ -247,7 +268,7 @@ const highlightMutations = (mutatedSequence: string): string => {
   }
   
   const originalSequence = currentTask.value.sequence;
-  let pocketSites = currentTask.value.pocket_sites || [];
+  let pocketSites = getDesignSites(currentTask.value);
   
   // 确保 pocketSites 是数字数组
   if (pocketSites.length > 0 && typeof pocketSites[0] === 'string') {
@@ -440,7 +461,7 @@ onMounted(fetchDetail);
 .sequence-text, .smiles-text {
   font-family: 'Courier New', Consolas, Monaco, monospace;
   font-size: 13px;
-  color: #606266;
+  color: #000;
   word-break: break-all;
   line-height: 1.6;
 }

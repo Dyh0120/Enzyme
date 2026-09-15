@@ -283,6 +283,7 @@
 						</el-input>
 					</div>
 					<div class="ketcher-dialog-buttons">
+						<span v-if="ketcherLoading" style="color:#909399;font-size:12px;margin-right:8px;">画板加载中…</span>
 						<el-button @click="handleGetSmiles" :loading="gettingSmiles">获取 SMILES</el-button>
 						<el-button type="primary" @click="handleConfirmSmiles">确认并应用</el-button>
 						<el-button @click="ketcherDialogVisible = false">关闭</el-button>
@@ -330,23 +331,13 @@ const pdbUuid = ref<string>('');
 const pocketSitesInput = ref<string>('');
 const predictionTypes = ref<string[]>([]);
 
-const predictionTypeOptions: { label: string; value: string; frontendOnly?: boolean }[] = [
-  { label: '活性', value: '0' },
-  { label: '温度', value: '1' },
-  { label: '表达量', value: '2' },
-  // 可溶性/疏水性：先只在前端展示，提交时不发送给后端（后端暂不支持）
-  { label: '可溶性', value: '3', frontendOnly: true },
-  { label: '疏水性', value: '4', frontendOnly: true },
+const predictionTypeOptions = [
+  { label: '活性', value: 'activity' },
+  { label: '热稳定性', value: 'stability' },
+  { label: '表达量', value: 'expression' },
+  { label: '可溶性', value: 'solubility' },
+  { label: '疏水性', value: 'hydrophobicity' },
 ];
-
-// 前端专用（暂不提交后端）的优化目标值集合
-const frontendOnlyTypeValues = predictionTypeOptions
-	.filter(item => item.frontendOnly)
-	.map(item => item.value);
-
-// 提交给后端的优化目标：过滤掉仅前端展示的项（如可溶性/疏水性）
-const getBackendPredictionTypes = (): string[] =>
-	predictionTypes.value.filter(v => !frontendOnlyTypeValues.includes(v));
 
 const form = reactive({
   sequence: '',
@@ -361,30 +352,38 @@ const handleOpenCanvas = () => {
 	tempSmiles.value = form.smiles;
 };
 
-const handleKetcherLoad = () => {
-	ketcherReady.value = true;
-	if (ketcherIframe.value?.contentWindow) {
-		try {
-			const iframeDoc = ketcherIframe.value.contentDocument || ketcherIframe.value.contentWindow?.document;
-			if (iframeDoc) {
-				setTimeout(() => {
-					injectKetcherMessageHandler();
-				}, 2000);
+// Ketcher 就绪状态：iframe 的 load 事件 ≠ Ketcher 应用初始化完成，
+// 需要通过轮询 iframe 内的 ketcher 实例来判定真正的就绪
+const ketcherLoading = ref(false);
+
+// 轮询等待 Ketcher 就绪；resolve(true)=已就绪，false=超时
+const whenKetcherReady = (timeoutMs = 30000): Promise<boolean> => {
+	return new Promise((resolve) => {
+		const start = Date.now();
+		const check = () => {
+			const win: any = ketcherIframe.value?.contentWindow;
+			if (win && win.ketcher && typeof win.ketcher.getSmiles === 'function') {
+				ketcherReady.value = true;
+				ketcherLoading.value = false;
+				resolve(true);
+				return;
 			}
-		} catch (error) {
-			console.log('无法访问 iframe 内容，可能需要通过 postMessage');
-		}
-	}
+			if (Date.now() - start >= timeoutMs) {
+				ketcherLoading.value = false;
+				resolve(false);
+				return;
+			}
+			setTimeout(check, 300);
+		};
+		check();
+	});
 };
 
-const injectKetcherMessageHandler = () => {
-	if (ketcherIframe.value?.contentWindow) {
-		try {
-			console.log('Ketcher 消息处理器已通过 HTML 文件注入');
-		} catch (error) {
-			console.log('无法注入脚本，使用备用方案');
-		}
-	}
+const handleKetcherLoad = () => {
+	// iframe 文档已加载，但 Ketcher 应用可能仍在初始化：开始轮询就绪
+	ketcherReady.value = false;
+	ketcherLoading.value = true;
+	whenKetcherReady();
 };
 
 const handleKetcherClose = () => {
@@ -393,6 +392,7 @@ const handleKetcherClose = () => {
 		messageHandler = null;
 	}
 	ketcherReady.value = false;
+	ketcherLoading.value = false;
 };
 
 let messageHandler: ((event: MessageEvent) => void) | null = null;
@@ -400,7 +400,9 @@ let messageHandler: ((event: MessageEvent) => void) | null = null;
 const handleGetSmiles = async () => {
 	gettingSmiles.value = true;
 	
-	if (ketcherIframe.value?.contentWindow && ketcherReady.value) {
+	// 等待 Ketcher 真正就绪后再获取，避免过早点击时误报“未加载”
+	await whenKetcherReady(30000);
+	if (ketcherIframe.value?.contentWindow) {
 		try {
 			if (messageHandler) {
 				window.removeEventListener('message', messageHandler);
@@ -486,7 +488,7 @@ const handleGetSmiles = async () => {
 	} else {
 		ElMessage({
 			type: 'info',
-			message: '画板尚未加载完成，请稍后再试',
+			message: '画板正在加载中，请稍候再试',
 		});
 		gettingSmiles.value = false;
 	}
@@ -777,8 +779,7 @@ const handleSubmit = async () => {
 			smiles: form.smiles.trim(),
 			pdb_uuid: pdbUuid.value,
 			pocket_sites: pocketSites,
-			// 可溶性/疏水性为先前端展示项，暂不提交给后端
-			prediction_type: getBackendPredictionTypes()
+			predict: predictionTypes.value
 		};
 
 		const response = await axios.post('/api/system/enzyme/task/create/', postData);
@@ -799,7 +800,7 @@ const handleSubmit = async () => {
 		}
 	} catch (error: any) {
 		console.error('提交失败:', error);
-		ElMessage.error(error.message || '提交失败，请稍后重试');
+		showCenterAlert(error.message || '提交失败，请稍后重试', '提交失败');
 	} finally {
 		loading.value = false;
 	}

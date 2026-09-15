@@ -7,9 +7,19 @@
         <el-option label="已完成" :value="1" />
         <el-option label="失败" :value="3" />
       </el-select>
+      <el-button
+        type="danger"
+        plain
+        :loading="batchDeleting"
+        :disabled="selectedRows.length === 0"
+        @click="handleBatchDelete"
+      >
+        批量删除{{ selectedRows.length ? `（${selectedRows.length}）` : '' }}
+      </el-button>
     </div>
     
-    <el-table :data="taskList" border stripe v-loading="loading" table-layout="fixed">
+    <el-table ref="tableRef" :data="taskList" border stripe v-loading="loading" table-layout="fixed" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="50" align="center" />
         <el-table-column label="编号" width="80" align="center">
           <template #default="{ $index }">
             <span class="serial-number">{{ (currentPage - 1) * pageSize + $index + 1 }}</span>
@@ -36,7 +46,7 @@
 
         <el-table-column label="位点信息" width="150">
           <template #default="{ row }">
-            <el-tag size="small" type="info">{{ row.pocket_sites?.join(', ') || '-' }}</el-tag>
+            <el-tag size="small" type="info">{{ getDesignSites(row).join(', ') || '-' }}</el-tag>
           </template>
         </el-table-column>
 
@@ -44,7 +54,7 @@
           <template #default="{ row }">
             <div class="prediction-types">
               <el-tag
-                v-for="(tag, idx) in formatPredictionTypes(row.prediction_type)"
+                v-for="(tag, idx) in formatPredictionTypes(getRawPredictionTypes(row))"
                 :key="idx"
                 :type="getPredictionTypeTagType(tag.value)"
                 size="small"
@@ -52,7 +62,7 @@
               >
                 {{ tag.label }}
               </el-tag>
-              <span v-if="!row.prediction_type || (Array.isArray(row.prediction_type) && row.prediction_type.length === 0)">-</span>
+              <span v-if="formatPredictionTypes(getRawPredictionTypes(row)).length === 0">-</span>
             </div>
           </template>
         </el-table-column>
@@ -131,7 +141,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { getEnzymeTaskList, cancelEnzymeTask, deleteEnzymeTask } from './api';
 
 const router = useRouter();
@@ -143,6 +153,7 @@ const currentPage = ref(1);
 const loading = ref(false);
 const statusFilter = ref<number | null>(null);
 const buttonLoading = ref<Record<string, boolean>>({});
+const batchDeleting = ref(false);
 
 let pollingTimer: any = null;
 
@@ -156,13 +167,20 @@ const getStatusType = (status: number) => {
   return typeMap[status] || 'info';
 };
 
+// 优化目标值 -> 中文标签
 const predictionTypeLabelMap: Record<string, string> = {
-  '0': '活性',
-  '1': '温度',
-  '2': '表达量',
-  '3': '可溶性',
-  '4': '疏水性',
+  activity: '活性',
+  stability: '热稳定性',
+  expression: '表达量',
+  solubility: '可溶性',
+  hydrophobicity: '疏水性',
 };
+
+// 兼容后端 predict / prediction_type 两种字段命名
+const getRawPredictionTypes = (row: any) => (row ? (row.predict ?? row.prediction_type) : undefined);
+
+// 位点信息字段：兼容 design_sites / pocket_sites
+const getDesignSites = (row: any): any[] => row?.design_sites ?? row?.pocket_sites ?? [];
 
 const formatPredictionTypes = (predictionType: any): { value: string; label: string }[] => {
   if (!predictionType) return [];
@@ -183,11 +201,11 @@ const formatPredictionTypes = (predictionType: any): { value: string; label: str
 
 const getPredictionTypeTagType = (value: string) => {
   const typeMap: Record<string, any> = {
-    '0': 'primary',
-    '1': 'warning',
-    '2': 'success',
-    '3': 'danger',
-    '4': 'info',
+    activity: 'primary',
+    stability: 'warning',
+    expression: 'success',
+    solubility: 'danger',
+    hydrophobicity: 'info',
   };
   return typeMap[value] || 'info';
 };
@@ -304,6 +322,62 @@ const handleDelete = async (row: any) => {
   }
 };
 
+// 表格多选
+const tableRef = ref();
+const selectedRows = ref<any[]>([]);
+const handleSelectionChange = (rows: any[]) => {
+  selectedRows.value = rows;
+};
+
+// 批量删除勾选的任务（无批量接口，逐个调用删除）
+const handleBatchDelete = async () => {
+  const targets = selectedRows.value;
+  if (targets.length === 0) {
+    ElMessage.warning('请先勾选要删除的任务');
+    return;
+  }
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除勾选的 ${targets.length} 个任务吗？此操作不可恢复。`,
+      '批量删除确认',
+      {
+        type: 'warning',
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        confirmButtonClass: 'el-button--danger',
+      }
+    );
+  } catch {
+    return; // 用户取消
+  }
+  batchDeleting.value = true;
+  try {
+    let success = 0;
+    const failed: any[] = [];
+    for (const task of targets) {
+      try {
+        const res = await deleteEnzymeTask({ uuid: task.uuid });
+        if (res.code === 200) success++;
+        else failed.push(task.uuid);
+      } catch {
+        failed.push(task.uuid);
+      }
+    }
+    if (failed.length === 0) {
+      ElMessage.success(`已删除 ${success} 个任务`);
+    } else {
+      ElMessage.warning(`删除完成：成功 ${success} 个，失败 ${failed.length} 个`);
+    }
+    tableRef.value?.clearSelection();
+    selectedRows.value = [];
+    fetchData();
+  } catch (error: any) {
+    ElMessage.error(error.message || '批量删除失败');
+  } finally {
+    batchDeleting.value = false;
+  }
+};
+
 const handleSizeChange = (val: number) => {
   pageSize.value = val;
   fetchData();
@@ -332,7 +406,7 @@ onMounted(fetchData);
 
 <style scoped lang="scss">
 .results-page { padding: 20px; background: #f8fafc; }
-.filter-bar { margin-bottom: 16px; }
+.filter-bar { margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
 
 .results-pagination {
 	margin-top: 18px;
@@ -350,7 +424,7 @@ onMounted(fetchData);
 .sequence-text, .smiles-text, .pdb-text { 
   font-family: monospace; 
   font-size: 12px; 
-  color: #334155; 
+  color: black; 
   word-break: break-all; 
 }
 
